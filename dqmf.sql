@@ -8,36 +8,38 @@ DECLARE @brid int;
 
 SET @brid = 0
 SET @db_name =  ' '
-SET @stage_name =   'CCRSExtract 1 ControlRecord'
+SET @stage_name =   'CCRSLoadtoDSDW 5 AD-Admission Prior to setPatient'
 
 
---SELECT 
---	br.BRId
---	,br.ShortNameOfTest
---	,br.ActionID
---	,sch.DQMF_ScheduleId
---	,br.Sequence
---	,stg.StageName
---	,etl.PkgName
---	,db.DatabaseName
---	,TargetObjectPhysicalName
---	,TargetObjectAttributePhysicalName
---	,CASE WHEN br.ActionSQL = '' THEN br.ConditionSQL ELSE br.ActionSQL END AS SQL_Code
---FROM DQMF_BizRule AS br
---JOIN DQMF_BizRuleSchedule AS br_sch
---ON br.BRID = br_sch.BRID
---JOIN DQMF_Schedule AS sch
---ON sch.DQMF_ScheduleId = br_sch.ScheduleID
---JOIN DQMF_Stage AS stg
---ON stg.StageID = sch.StageID
---JOIN ETL_Package AS etl
---ON sch.PkgKey = etl.PkgID
---JOIN MD_Database AS db
---ON sch.DatabaseId = db.DatabaseId
---WHERE stg.StageName LIKE @stage_name
---OR br.BRId = @brid
---OR db.DatabaseName LIKE @db_name
---ORDER BY br.Sequence ASC
+SELECT 
+	br.BRId
+	,br.ShortNameOfTest
+	,br.ActionID
+	,sch.DQMF_ScheduleId
+	,br.Sequence
+	,stg.StageName
+	,etl.PkgName
+	,db.DatabaseName
+	,TargetObjectPhysicalName
+	,TargetObjectAttributePhysicalName
+	,CASE WHEN br.ActionSQL = '' THEN br.ConditionSQL ELSE br.ActionSQL END AS SQL_Code
+	,CASE WHEN br.ActionSQL = '' THEN 'ConditionSQL' ELSE 'ActionSQL' END AS SQL_Code_Use
+	,br.*
+FROM DQMF_BizRule AS br
+JOIN DQMF_BizRuleSchedule AS br_sch
+ON br.BRID = br_sch.BRID
+JOIN DQMF_Schedule AS sch
+ON sch.DQMF_ScheduleId = br_sch.ScheduleID
+JOIN DQMF_Stage AS stg
+ON stg.StageID = sch.StageID
+JOIN ETL_Package AS etl
+ON sch.PkgKey = etl.PkgID
+JOIN MD_Database AS db
+ON sch.DatabaseId = db.DatabaseId
+WHERE stg.StageName LIKE @stage_name
+OR br.BRId = @brid
+OR db.DatabaseName LIKE @db_name
+ORDER BY br.Sequence ASC
 
 DECLARE @md_db varchar(100);
 DECLARE @md_sub varchar(100);
