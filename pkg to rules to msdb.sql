@@ -11,8 +11,11 @@ SELECT
 	,pkg.PkgName
 	,stg.StageID
 	,stg.StageName
+	,br.Sequence
 	,br.ActionID
 	,br.ShortNameOfTest
+	,br.brid
+	,br.ActionSql
 	,config.ConfigurationFilter
 FROM ETL_Package AS pkg
 JOIN DQMF_Schedule AS sch
@@ -26,15 +29,22 @@ ON br_sch.BRID = br.BRId
 LEFT JOIN msdb.dbo.SSIS_Config AS config
 ON SUBSTRING(config.ConfigurationFilter,1,CASE WHEN CHARINDEX('.',config.ConfigurationFilter,1) = 0 THEN 100 ELSE CHARINDEX('.',config.ConfigurationFilter,1)-1 END) = pkg.PkgName
 WHERE br.IsActive = 1
+AND stg.StageName = 'CCRSExtract 1 ControlRecord'
 GROUP BY pkg.PkgName
 	,stg.StageID
 	,stg.StageName
+	,br.Sequence
 	,br.ActionID
 	,br.ShortNameOfTest
+	,br.brid
+	,br.ActionSql
 	,config.ConfigurationFilter
 ORDER BY pkg.PkgName
 	,stg.StageID
 	,stg.StageName
+	,br.Sequence
 	,br.ActionID
 	,br.ShortNameOfTest
+	,br.brid
+	,br.ActionSql
 	,config.ConfigurationFilter

@@ -54,21 +54,17 @@ BEGIN
 	SET @sql = FORMATMESSAGE(N'SELECT @null_countOUT = COUNT(*) FROM %s WHERE %s IS NULL;', @full_table_name, @column_name); 
 	SET @param = FORMATMESSAGE(N'@null_countOUT int OUT');
 	EXEC sp_executesql @sql, @param, @null_countOUT = @null_count OUT;
-	RAISERROR('%s',0, 1, @column_name) WITH NOWAIT;
 
 	SET @sql = FORMATMESSAGE(N'SELECT @distinct_countOUT = COUNT(DISTINCT %s) FROM %s;', @column_name, @full_table_name); 
 	SET @param = FORMATMESSAGE(N'@distinct_countOUT int OUT');
 	EXEC sp_executesql @sql, @param, @distinct_countOUT = @distinct_count OUT;
-	RAISERROR('%s',0, 1, @column_name) WITH NOWAIT;
 
-	SET @sql = FORMATMESSAGE(N'SELECT @zero_countOUT = COUNT(*) FROM %s WHERE [%s] = 0;', @full_table_name, @column_name); 
-	RAISERROR('%s',0, 1, @sql) WITH NOWAIT;
+	SET @sql = FORMATMESSAGE(N'SELECT @zero_countOUT = COUNT(*) FROM %s WHERE CAST(%s AS varchar(100))= ''0'';', @full_table_name, @column_name); 
 	SET @param = FORMATMESSAGE(N'@zero_countOUT int OUT');
-	RAISERROR('%s',0, 1, @param) WITH NOWAIT;
 	EXEC sp_executesql @sql, @param, @zero_countOUT = @zero_count OUT;
-	RAISERROR('%s',0, 1, @column_name) WITH NOWAIT;
 END
 GO
+
 --DECLARE @null_count int 
 --	,@distinct_count int
 --	,@zero_count int;
@@ -173,9 +169,7 @@ BEGIN
 	WHILE @@FETCH_STATUS = 0
 	BEGIN
 		SET @full_column_name = @full_table_name+'.'+@column_name
-		RAISERROR('hello',0, 1) WITH NOWAIT;
 		EXEC dbo.uspColumnSummary @full_column_name, @null_count OUT, @distinct_count OUT, @zero_count OUT;
-		RAISERROR('hello',0, 1) WITH NOWAIT;
 		--SELECT @null_count AS null_count, @distinct_count AS distinct_count, @zero_count AS zero_count;
 		UPDATE @table_summary
 		SET null_count = @null_count
