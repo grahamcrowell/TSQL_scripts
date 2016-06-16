@@ -1,5 +1,5 @@
-USE CommunityMart
-GO
+--USE DQMF
+--GO
 
 
 
@@ -19,6 +19,7 @@ AS
 BEGIN
 	SET NOCOUNT ON;
 	SET ANSI_WARNINGS OFF;
+	RAISERROR ('Table Row Count: %s', 0, 1, @user_input) WITH NOWAIT;
 	DECLARE @database_name sysname;
 	DECLARE @schema_name sysname;
 	DECLARE @table_name sysname;
@@ -33,6 +34,13 @@ BEGIN
 	SELECT @schema_name = ISNULL(PARSENAME(@user_input, 3),'dbo');
 	SELECT @table_name = PARSENAME(@user_input, 2);
 	SELECT @column_name = PARSENAME(@user_input, 1);
+	DECLARE @fmt nvarchar(500);
+
+	IF @database_name != DB_NAME()
+	BEGIN
+		SET @fmt = N'uspColumnSummary ERROR: change current database connection to ''%s''.'
+		--RAISERROR(@fmt, 18,1, @database_name);
+	END
 
 	DECLARE @full_table_name varchar(300) = FORMATMESSAGE('%s.%s.%s',@database_name,@schema_name,@table_name);
 	--SELECT @full_table_name AS full_table_name;
@@ -47,7 +55,7 @@ BEGIN
 	DECLARE @object_id int = OBJECT_ID(@full_table_name);
 	IF @object_id IS NULL
 	BEGIN 
-		DECLARE @fmt nvarchar(500) = N'uspColumnSummary ERROR: ''%s'' is not a valid table.'
+		SET @fmt = N'uspColumnSummary ERROR: ''%s'' is not a valid table.'
 		RAISERROR(@fmt, 18,1, @full_table_name);
 	END
 	
@@ -65,12 +73,6 @@ BEGIN
 END
 GO
 
---DECLARE @null_count int 
---	,@distinct_count int
---	,@zero_count int;
---EXEC dbo.uspColumnSummary 'dbo.ReferralFact.SourceReferralID', @null_count OUT, @distinct_count OUT, @zero_count OUT;
-
---SELECT @null_count AS null_count, @distinct_count AS distinct_count, @zero_count AS zero_count;
 
 IF OBJECT_ID('dbo.uspTableSummary','P') IS NULL
 BEGIN 
@@ -81,43 +83,61 @@ GO
 
 ALTER PROC dbo.uspTableSummary 	
 	@user_input varchar(1552) = NULL
+	,@debug int = 0
 AS
 BEGIN
 	SET NOCOUNT ON;
 	SET ANSI_WARNINGS OFF;
-	PRINT 'Computing summary for: '
-	PRINT ''
-	RAISERROR ('%s', 0, 1, @user_input) WITH NOWAIT;
+	DECLARE @fmt nvarchar(500);
 
-	DECLARE @object_id int = ISNULL(OBJECT_ID(@user_input,'U'),OBJECT_ID(@user_input,'V'));
-	IF @object_id IS NULL
-	BEGIN 
-		DECLARE @fmt nvarchar(500) = N'uspTableSummary ERROR: ''%s'' is not a valid table or view.'
-		RAISERROR(@fmt, 18,1, @user_input);
-	END
-
-
+	-- break up user input into parts, fill in missing parts with defaults
 	DECLARE @database_name sysname;
 	DECLARE @schema_name sysname;
 	DECLARE @table_name sysname;
-	SELECT @database_name = ISNULL(PARSENAME(@user_input, 3), DB_NAME());
-	SELECT @schema_name = ISNULL(PARSENAME(@user_input, 2), 'dbo');
+	IF PARSENAME(@user_input, 3) IS NULL
+	BEGIN 
+		SET @fmt = N'uspTableSummary WARNING: no database specified default is current database: '''+DB_NAME()+'''';
+		RAISERROR(@fmt, 0,0) WITH NOWAIT;
+		SELECT @database_name = DB_NAME();
+	END
+	ELSE
+		SELECT @database_name = PARSENAME(@user_input, 3);
+
+	IF PARSENAME(@user_input, 2) IS NULL
+	BEGIN 
+		SET @fmt = N'uspTableSummary WARNING: no schema specified default is ''dbo''';
+		RAISERROR(@fmt, 0,0) WITH NOWAIT;
+		SELECT @schema_name = 'dbo';
+	END
+	ELSE
+		SELECT @schema_name = PARSENAME(@user_input, 2);
+	
 	SELECT @table_name = PARSENAME(@user_input, 1);
 
+
+	--PRINT @database_name;
+	--PRINT @schema_name;
+	--PRINT @table_name;
+
+	--SELECT OBJECT_SCHEMA_NAME(object_id, DB_ID(@database_name)), *
+	--FROM DSDW.sys.tables AS tab
+	--WHERE tab.name = @table_name
+	--AND OBJECT_SCHEMA_NAME(object_id, DB_ID(@database_name)) = @schema_name
+
 	DECLARE @full_table_name nvarchar(300) = FORMATMESSAGE('%s.%s.%s',@database_name,@schema_name,@table_name);
-	--SELECT @full_table_name AS full_table_name_uspTableSummary;
+
+	DECLARE @object_id bigint = OBJECT_ID(@full_table_name);
+	IF @object_id IS NULL
+	BEGIN 
+		SET @fmt = N'uspTableSummary ERROR: object with name ''%s'' does not exist on server ''%s'''
+		RAISERROR(@fmt, 18,1, @full_table_name, @@SERVERNAME) WITH NOWAIT;
+	END
 	
-
-	--SELECT 
-	--	'uspTableSummary' AS src
-	--	,@database_name AS database_name
-	--	,@schema_name AS schema_name
-	--	,@table_name AS table_name
-
 	DECLARE @sql nvarchar(max);
 
 	DECLARE @table_row_count int;
 	DECLARE @param nvarchar(500);
+
 	SET @sql = FORMATMESSAGE(N'SELECT @table_row_countOUT = COUNT(*) FROM %s', @full_table_name);
 	SET @param = '@table_row_countOUT int OUT';
 	EXEC sp_executesql @sql, @param, @table_row_countOUT = @table_row_count OUT;
@@ -126,8 +146,13 @@ BEGIN
 	RAISERROR ('Table Row Count: %s', 0, 1, @sql) WITH NOWAIT;
 	PRINT ''
 
+	IF OBJECT_ID('tempdb..#table_summary_counts','U') IS NOT NULL
+	BEGIN
+		DROP TABLE #table_summary_counts;
+	END
 
-	DECLARE  @table_summary table (
+	CREATE TABLE #table_summary_counts 
+	(
 		column_name nvarchar(300)
 		,column_type varchar(20)
 		,null_count int
@@ -135,91 +160,129 @@ BEGIN
 		,zero_count int
 		,column_id int
 	);
-	INSERT INTO @table_summary (column_name, column_type, column_id)
+
+
+	SET @sql = N'
+	INSERT INTO #table_summary_counts (column_name, column_type, column_id)
 	SELECT 
 		col.name AS column_name
 		,CASE
-			WHEN typ.name LIKE '%char%' THEN FORMATMESSAGE('%s(%i)',typ.name, col.max_length)
+			WHEN typ.name LIKE ''%char%'' AND col.max_length = -1 THEN FORMATMESSAGE(''%s(MAX)'',typ.name, col.max_length)
+			WHEN typ.name LIKE ''%char%'' THEN FORMATMESSAGE(''%s(%i)'',typ.name, col.max_length)
 			ELSE typ.name
 		END AS column_type
 		,col.column_id
-	FROM sys.columns AS col
-	JOIN sys.types AS typ
+	FROM '+@database_name+'.sys.columns AS col
+	JOIN '+@database_name+'.sys.types AS typ
 	ON col.system_type_id = typ.system_type_id
-	WHERE object_id = @object_id
-	ORDER BY col.object_id ASC;
+	WHERE object_id = '+CAST(@object_id AS varchar(10))+'
+	ORDER BY col.object_id ASC;'
 
-	--SELECT *
-	--FROM @table_summary;
+	EXEC(@sql);
+
+	IF @Debug > 0
+	SELECT * FROM #table_summary_counts;
 
 	DECLARE cur CURSOR FAST_FORWARD
 	FOR 
-	SELECT column_name
-	FROM @table_summary;
+	SELECT column_name, column_type
+	FROM #table_summary_counts;
 
-	DECLARE @column_name sysname
+	DECLARE 
+		@column_name sysname
+		,@column_type sysname
 		,@null_count int
 		,@distinct_count int
 		,@zero_count int
 	
 	OPEN cur;
 
-	FETCH NEXT FROM cur INTO @column_name;
+	FETCH NEXT FROM cur INTO @column_name, @column_type;
 	DECLARE @full_column_name nvarchar(300);
 	WHILE @@FETCH_STATUS = 0
 	BEGIN
-		SET @full_column_name = @full_table_name+'.'+@column_name
-		EXEC dbo.uspColumnSummary @full_column_name, @null_count OUT, @distinct_count OUT, @zero_count OUT;
-		--SELECT @null_count AS null_count, @distinct_count AS distinct_count, @zero_count AS zero_count;
-		UPDATE @table_summary
+		SELECT @null_count = NULL, @distinct_count = NULL, @zero_count = NULL;
+		IF @column_type NOT IN ('xml')
+		BEGIN
+			SET @full_column_name = @full_table_name+'.'+@column_name
+			EXEC dbo.uspColumnSummary @full_column_name, @null_count OUT, @distinct_count OUT, @zero_count OUT;
+		END
+		--SELECT  @full_column_name AS full_column_name, @null_count AS null_count, @distinct_count AS distinct_count, @zero_count AS zero_count;
+		UPDATE #table_summary_counts
 		SET null_count = @null_count
 			,distinct_count = @distinct_count
 			,zero_count = @zero_count
-		FROM @table_summary
+		FROM #table_summary_counts
 		WHERE column_name = @column_name;
 		RAISERROR ('%-30s null_count: %12i   distinct_count: %12i   zero_count: %12i', 0, 1, @column_name, @null_count, @distinct_count, @zero_count) WITH NOWAIT;
 
-		FETCH NEXT FROM cur INTO @column_name
+		FETCH NEXT FROM cur INTO @column_name, @column_type;
 	END
 
 	CLOSE cur;
 	DEALLOCATE cur;
-
-	
 
 	SELECT 
 		@database_name AS database_name
 		,@schema_name AS schema_name
 		,@table_name AS table_name
 		,FORMAT(@table_row_count, 'N0') AS table_row_count
+	
+	DECLARE @null_percent decimal(3,1)
+		,@distinct_percent decimal(3,1)
+		,@zero_percent decimal(3,1)
+
+	IF @table_row_count > 0
+	BEGIN
+		SET @null_percent = 1.*@null_count/@table_row_count;
+		SET @distinct_percent = 1.*@distinct_count/@table_row_count;
+		SET @zero_percent = 1.*@zero_count/@table_row_count;
+	END
 
 	SELECT 
 		column_name
+		,column_type
 		,FORMAT(null_count, 'N0') AS null_count
-		,FORMAT(1.*null_count/@table_row_count,'p') AS null_percent
+		,FORMAT(CASE WHEN @table_row_count = 0 THEN NULL ELSE 1.*null_count/@table_row_count END,'p') AS null_percent
 		,FORMAT(distinct_count, 'N0') AS distinct_count
-		,FORMAT(1.*distinct_count/@table_row_count,'p') AS distinct_zero
+		,FORMAT(CASE WHEN @table_row_count = 0 THEN NULL ELSE 1.*distinct_count/@table_row_count END,'p') AS distinct_zero
 		,FORMAT(zero_count, 'N0') AS zero_count
-		,FORMAT(1.*zero_count/@table_row_count,'p') AS zero_percent
-	FROM @table_summary
+		,FORMAT(CASE WHEN @table_row_count = 0 THEN NULL ELSE 1.*zero_count/@table_row_count END,'p') AS zero_percent
+	FROM #table_summary_counts
 	ORDER BY column_id ASC;
+
+	IF OBJECT_ID('tempdb..#table_summary_counts','U') IS NOT NULL
+	BEGIN
+		DROP TABLE #table_summary_counts;
+	END
+
+
 END
 GO
 
-EXEC dbo.uspTableSummary 'CommunityMart.dbo.CaseNoteContactFact';
---EXEC dbo.uspTableSummary'dbo.ReferralFact';
---EXEC dbo.uspTableSummary'ReferralFact';
---EXEC dbo.uspTableSummary'DSDW.Community.ReferralFact';
+DECLARE @user_input varchar(500) = 'Community.ReferralFact';
 
 
+--GO
 
---EXEC sp_columns 'ReferralFact'
-
-
---SELECT FORMAT(1.*5/9,'p')
-
+EXEC dbo.uspTableSummary 'Community.CaseNoteContactFact';
+--EXEC dbo.uspTableSummary 'dbo.CaseNoteContactFact';
 
 
+--Staging.CCRSXmlExtract
+--Staging.CCRSXmlFactHeader
+--Staging.CCRSExtract
+
+
+DECLARE @fmt nvarchar(500);
+	DECLARE @database_name sysname;
+	DECLARE @schema_name sysname;
+	DECLARE @table_name sysname;
+DECLARE @null_count int 
+	,@distinct_count int
+	,@zero_count int;
+EXEC dbo.uspColumnSummary 'DSDW.Community.ReferralFact.SourceReferralID', @null_count OUT, @distinct_count OUT, @zero_count OUT;
+SELECT @null_count AS null_count, @distinct_count AS distinct_count, @zero_count AS zero_count;
 
 
 
