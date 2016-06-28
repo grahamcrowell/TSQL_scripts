@@ -4,27 +4,30 @@ GO
 DECLARE @pkg_name varchar(100);
 DECLARE @stage_name varchar(100);
 DECLARE @database_name varchar(100);
---DECLARE @table_name varchar(100);
+DECLARE @table_name varchar(100);
 
-SET @pkg_name = '%CCRS%';
-SET @stage_name = NULL;
-SET @database_name = 'DSDW';
---SET @table_name = NULL;
+SET @pkg_name = 'CCRSXml';
+SET @stage_name = 'CCRSXml - 1 Xml Tables';
+SET @database_name = NULL;
+--SET @table_name = '%Contact%';
 
 SELECT DISTINCT
-	pkg.PkgName
-	,sch.DQMF_ScheduleId
+	br.BRId
+	,pkg.PkgName
 	,stg.StageName
-	,stg.StageID
+	,stg.StageOrder
 	,br.Sequence
 	,br.ShortNameOfTest
-	,br.ActionID
-	,act.ActionName
+	,'('+CAST(br.ActionID AS varchar)+') ' + act.ActionName AS ActionIdName
 	,br.ActionSQL
 	,br.ConditionSQL
+	,br.DefaultValue
 	,br.SourceObjectPhysicalName
 	,br.TargetObjectPhysicalName
 	,br.FactTableObjectAttributeName
+	,sch.DQMF_ScheduleId
+	,pkg.PkgID
+
 	,br.*
 FROM dbo.ETL_Package AS pkg
 JOIN dbo.DQMF_Schedule AS sch
@@ -41,46 +44,13 @@ ON br.ActionID = act.ActionID
 JOIN dbo.MD_Database AS db
 ON db.DatabaseId = br.DatabaseId
 WHERE 1=1
-AND br.IsActive = 1
+--AND br.IsActive = 1
 AND (@pkg_name IS NULL OR pkg.PkgName LIKE @pkg_name)
 AND (@stage_name IS NULL OR stg.StageName LIKE @stage_name)
 AND (@database_name IS NULL OR db.DatabaseName LIKE @database_name)
---AND (@table_name IS NULL 
---		OR br.SourceObjectPhysicalName LIKE @table_name
---		OR br.TargetObjectPhysicalName LIKE @table_name
---)
-ORDER BY pkg.PkgName, stg.StageName, br.Sequence ASC
-
-----ActionID = 0 -> lookup
----- = 1 -> identify bad records:
----- = 2 -> identify bad records: 
---	--conditionSQL not null
---	--actionsql is null
---	--sourceobject is null
---	--targetobject is Staging
----- = 4 -> update, delete records:
---	--conditional sql is null
---	--action sql is not null
---	--source object is ~ not
---	--destination object is ~ not
---SELECT *
---FROM DQMF.dbo.DQMF_BizRule AS br
-----JOIN DQMF.dbo.DQMF_BizRuleLookupMapping AS lkup
-----ON br.BRId = lkup.BRId
---WHERE 1=1 
-----and br.ActionID = 4
---and br.IsActive = 1
-----and br.TargetObjectPhysicalName = '%Community%'
---and br.DatabaseId = 32
---ORDER BY CreatedDT DESC;
-
-
-
-----USE DSDW
-----GO
-
-----SELECT *
-----FROM sys.columns as col
-----join sys.tables as tab
-----on col.object_id = tab.object_id
-----where tab.name = 'AdmissionStageLG';
+AND (@table_name IS NULL OR ((br.SourceObjectPhysicalName LIKE @table_name OR br.TargetObjectPhysicalName LIKE @table_name) AND br.ActionID = 0))
+--AND br.ActionID = 0
+--AND stg.StageOrder = 1
+--AND br.BRId = 112771
+ORDER BY pkg.PkgName, stg.StageOrder
+, stg.StageName, br.Sequence ASC
