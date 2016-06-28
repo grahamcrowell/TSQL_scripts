@@ -23,7 +23,6 @@ BEGIN
 END
 GO
 --#endregion CREATE DATABASE
---#endregion CREATE DATABASE
 
 --#region CREATE SCHEMA
 USE <dst_database_name,,>
@@ -32,7 +31,7 @@ GO
 DECLARE @name nvarchar(max);
 DECLARE @sql nvarchar(max);
 
-SET @name = '<dst_schema_name,,>';
+SET @name = '<dst_object_name,,>';
 SET @sql = FORMATMESSAGE('CREATE SCHEMA %s;',@name);
 
 IF SCHEMA_ID(@name) IS NULL
@@ -50,7 +49,7 @@ GO
 DECLARE @name nvarchar(max);
 DECLARE @sql nvarchar(max);
 
-SET @name = '<dst_table_name,,>';
+SET @name = '<dst_object_name,,>';
 SET @sql = FORMATMESSAGE('DROP TABLE %s;',@name);
 
 IF OBJECT_ID(@name,'U') IS NOT NULL
@@ -59,9 +58,9 @@ BEGIN
 	EXEC(@sql);
 END
 
-CREATE TABLE <dst_table_name,,>
+CREATE TABLE <dst_object_name,,>
 (
-	<column_definition,,>
+	<table_definition,,>
 );
 GO
 --#endregion CREATE TABLE
@@ -73,7 +72,7 @@ GO
 DECLARE @name nvarchar(max);
 DECLARE @sql nvarchar(max);
 
-SET @name = '<dst_view_name,,>';
+SET @name = '<dst_object_name,,>';
 SET @sql = FORMATMESSAGE('CREATE VIEW %s AS SELECT 1 AS [one];',@name);
 
 IF OBJECT_ID(@name,'V') IS NULL
@@ -82,7 +81,7 @@ BEGIN
 	EXEC(@sql);
 END
 
-ALTER VIEW <dst_view_name,,>
+ALTER VIEW <dst_object_name,,>
 AS
 	<query_definition,,>
 ;
@@ -96,7 +95,7 @@ GO
 DECLARE @name nvarchar(max);
 DECLARE @sql nvarchar(max);
 
-SET @name = '<dst_proc_name,,>';
+SET @name = '<dst_object_name,,>';
 SET @sql = FORMATMESSAGE('CREATE PROC %s AS BEGIN SELECT 1 AS [one] END;',@name);
 
 IF OBJECT_ID(@name,'P') IS NULL
@@ -105,7 +104,7 @@ BEGIN
 	EXEC(@sql);
 END
 
-ALTER PROC <dst_proc_name,,>
+ALTER PROC <dst_object_name,,>
 AS
 	<sql_definition,,>
 ;
@@ -119,7 +118,7 @@ GO
 DECLARE @name nvarchar(max);
 DECLARE @sql nvarchar(max);
 
-SET @name = '<dst_table_func_name,,>';
+SET @name = '<dst_object_name,,>';
 SET @sql = FORMATMESSAGE('CREATE FUNC %s() RETURNS TABLE AS BEGIN RETURN SELECT 1 AS [one] END;',@name);
 
 IF OBJECT_ID(@name,'IF') IS NULL
@@ -128,7 +127,7 @@ BEGIN
 	EXEC(@sql);
 END
 
-ALTER FUNCTION <dst_table_func_name,,>
+ALTER FUNCTION <dst_object_name,,>
 AS
 	<function_definition,,>
 ;
@@ -142,7 +141,7 @@ GO
 DECLARE @name nvarchar(max);
 DECLARE @sql nvarchar(max);
 
-SET @name = '<dst_scalar_func_name,,>';
+SET @name = '<dst_object_name,,>';
 SET @sql = FORMATMESSAGE('CREATE FUNC %s() RETURNS int AS BEGIN DECLARE @ret int = 1; RETURN @ret END;',@name);
 
 IF OBJECT_ID(@name,'FN') IS NULL
@@ -151,7 +150,7 @@ BEGIN
 	EXEC(@sql);
 END
 
-ALTER FUNCTION <dst_scalar_func_name,,>
+ALTER FUNCTION <dst_object_name,,>
 AS
 	<function_definition,,>
 ;
