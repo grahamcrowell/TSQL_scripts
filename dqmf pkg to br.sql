@@ -1,15 +1,24 @@
 USE DQMF
 GO
 
-DECLARE @pkg_name varchar(100);
-DECLARE @stage_name varchar(100);
-DECLARE @database_name varchar(100);
+DECLARE @PkgName varchar(100);
+DECLARE @StageName varchar(100);
+DECLARE @DatabaseName varchar(100);
 DECLARE @table_name varchar(100);
+DECLARE @IsActive bit;
+DECLARE @StageOrder int;
+DECLARE @BRId int;
+DECLARE @sql varchar(500);
 
-SET @pkg_name = 'CCRSXml';
-SET @stage_name = 'CCRSXml - 1 Xml Tables';
-SET @database_name = NULL;
+--SET @PkgName = '%CCRS%';
+--SET @StageName = 'CCRSXml - 1 Xml Tables';
+--SET @DatabaseName = NULL;
 --SET @table_name = '%Contact%';
+--SET @IsActive = 1;
+-- SET @StageOrder = 1;
+-- SET @BRId = 123;
+--SET @sql = 'ControlRecord';
+
 
 SELECT DISTINCT
 	br.BRId
@@ -44,13 +53,12 @@ ON br.ActionID = act.ActionID
 JOIN dbo.MD_Database AS db
 ON db.DatabaseId = br.DatabaseId
 WHERE 1=1
---AND br.IsActive = 1
-AND (@pkg_name IS NULL OR pkg.PkgName LIKE @pkg_name)
-AND (@stage_name IS NULL OR stg.StageName LIKE @stage_name)
-AND (@database_name IS NULL OR db.DatabaseName LIKE @database_name)
-AND (@table_name IS NULL OR ((br.SourceObjectPhysicalName LIKE @table_name OR br.TargetObjectPhysicalName LIKE @table_name) AND br.ActionID = 0))
---AND br.ActionID = 0
---AND stg.StageOrder = 1
---AND br.BRId = 112771
-ORDER BY pkg.PkgName, stg.StageOrder
-, stg.StageName, br.Sequence ASC
+AND (@StageOrder IS NULL OR stg.StageOrder = @StageOrder)
+AND (@BRId IS NULL OR br.BRId = @BRId)
+AND (@IsActive IS NULL OR br.IsActive = @IsActive)
+AND (@PkgName IS NULL OR pkg.PkgName LIKE @PkgName)
+AND (@StageName IS NULL OR stg.StageName LIKE @StageName)
+AND (@DatabaseName IS NULL OR db.DatabaseName LIKE @DatabaseName)
+AND (@table_name IS NULL OR (br.SourceObjectPhysicalName LIKE @table_name OR br.TargetObjectPhysicalName LIKE @table_name))
+AND (@sql IS NULL OR (br.ActionSQL LIKE @sql OR br.ConditionSQL LIKE @sql OR br.SourceObjectPhysicalName LIKE @sql OR br.TargetObjectPhysicalName LIKE @sql))
+ORDER BY pkg.PkgName, stg.StageOrder, stg.StageName, br.Sequence ASC
