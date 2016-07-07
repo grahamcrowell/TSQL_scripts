@@ -1,6 +1,8 @@
 USE DQMF
 GO
 
+--EXEC msdb.dbo.sp_start_job N'CCRSXml';
+
 DECLARE @PkgName varchar(100);
 DECLARE @StageName varchar(100);
 DECLARE @DatabaseName varchar(100);
@@ -10,13 +12,13 @@ DECLARE @StageOrder int;
 DECLARE @BRId int;
 DECLARE @sql varchar(500);
 
---SET @PkgName = '%CCRS%';
+SET @PkgName = '%CCRS%';
 --SET @StageName = 'CCRSXml - 1 Xml Tables';
 --SET @DatabaseName = NULL;
 --SET @table_name = '%CCRSOutputControlRecord%';
 --SET @IsActive = 1;
 -- SET @StageOrder = 1;
-SET @BRId = 112771;
+--SET @BRId = 112771;
 --SET @sql = '%CCRSOutputControlRecord%';
 
 
@@ -62,4 +64,3 @@ AND (@DatabaseName IS NULL OR db.DatabaseName LIKE @DatabaseName)
 AND (@table_name IS NULL OR (br.SourceObjectPhysicalName LIKE @table_name OR br.TargetObjectPhysicalName LIKE @table_name))
 AND (@sql IS NULL OR (br.ActionSQL LIKE @sql OR br.ConditionSQL LIKE @sql OR br.SourceObjectPhysicalName LIKE @sql OR br.TargetObjectPhysicalName LIKE @sql))
 ORDER BY pkg.PkgName, stg.StageOrder, stg.StageName, br.Sequence ASC
-select case when 'n' < 'm' then 1 else 0 end
