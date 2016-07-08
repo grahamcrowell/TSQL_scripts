@@ -97,7 +97,7 @@ BEGIN
 			ON stg.StageID = sch.StageID
 			JOIN dbo.ETL_Package AS etl
 			ON sch.PkgKey = etl.PkgID
-			WHERE etl.PkgName = @pPkgName
+			WHERE etl.PkgName = 'CCRSXml'
 			RAISERROR('%i DQMF_Stage deleted',0,1,@@ROWCOUNT) WITH NOWAIT;
 
 			DELETE DQMF_Schedule
