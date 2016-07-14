@@ -13,8 +13,8 @@ DECLARE @BRId int;
 DECLARE @sql varchar(500);
 
 
---SET @PkgName = '%CCRS%';
---SET @StageName = 'CCRSXml - 1 Xml Tables';
+SET @PkgName = '%CCRS%';
+SET @StageName = 'CCRSLoadtoDSDW 8 Ax-Assessment individual record';
 --SET @DatabaseName = NULL;
 --SET @table_name = '%CCRSOutputControlRecord%';
 SET @IsActive = 1;
