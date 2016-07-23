@@ -13,14 +13,14 @@ DECLARE @BRId int;
 DECLARE @sql varchar(500);
 
 
-SET @PkgName = '%CCRS%';
-SET @StageName = 'CCRSLoadtoDSDW 8 Ax-Assessment individual record';
+SET @PkgName = '%Community%';
+--SET @StageName = 'CCRSLoadtoDSDW 8 Ax-Assessment individual record';
 --SET @DatabaseName = NULL;
 --SET @table_name = '%CCRSOutputControlRecord%';
 SET @IsActive = 1;
 -- SET @StageOrder = 1;
 --SET @BRId = 112771;
---SET @sql = '%CCRS%';
+SET @sql = '%HCRS%';
 
 
 SELECT DISTINCT

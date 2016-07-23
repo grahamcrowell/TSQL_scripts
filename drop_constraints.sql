@@ -8,7 +8,8 @@ SELECT tab.name AS TableName, fk.name AS ForeignKeyName
 FROM sys.foreign_keys AS fk
 JOIN sys.tables AS tab
 ON fk.parent_object_id = tab.object_id
-WHERE tab.name NOT LIKE '%sys%';
+WHERE tab.name NOT LIKE '%sys%'
+AND tab.name NOT LIKE 'DQMF%'
 
 OPEN fk_cur;
 
