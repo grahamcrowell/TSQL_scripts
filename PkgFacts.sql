@@ -22,6 +22,8 @@ AND fact.DatabaseId = 2
 
 
 
+
+
 ;with stg_fact AS (
 SELECT sub2.*
 FROM (
@@ -81,6 +83,7 @@ LEFT JOIN MD_ObjectAttribute AS attr
 ON br.FactTableObjectAttributeId = attr.ObjectAttributeID
 LEFT JOIN MD_Object AS obj
 ON obj.ObjectID = attr.ObjectID
+or br.TargetObjectPhysicalName = obj.ObjectSchemaName +'.'+obj.ObjectPhysicalName
 LEFT JOIN MD_SubjectArea AS sub
 ON obj.SubjectAreaID = sub.SubjectAreaID
 FULL JOIN stg_fact
