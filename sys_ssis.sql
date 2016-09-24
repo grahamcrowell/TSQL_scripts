@@ -1,7 +1,7 @@
 -- Integration Services Tables (Transact-SQL) https://msdn.microsoft.com/en-us/library/ms181701.aspx
 -- SQL Server Agent Tables (Transact-SQL) https://msdn.microsoft.com/en-us/library/ms181367.aspx
 
-:connect STDBDECSUP02
+--:connect STDBDECSUP02
 USE DQMF
 GO
 
@@ -21,16 +21,18 @@ GO
 	ON pkg.folderid = msdb_package_path.folderid
 ), msdb_job_step AS (
 	SELECT 
-		job.name AS job_name, job.date_created, job.date_modified
-		,step.step_name, step.step_id, step.subsystem, step.command
-		,msdb_package.package_name, msdb_package.package_path
-		,step.last_run_date, step.last_run_duration
-		,CASE 
-			WHEN act.run_requested_source = 1 THEN 'SOURCE_SCHEDULER'
-			WHEN act.run_requested_source = 4 THEN 'SOURCE_USER'
-			WHEN act.run_requested_source IS NULL THEN NULL
-			ELSE 'see documentation'
-		END AS execution_source
+		job.name AS job_name
+		,step.step_name
+		,msdb_package.package_name
+		,step.last_run_date
+		,step.last_run_outcome
+		,job.date_created
+		,job.date_modified
+		,step.step_id
+		,step.command
+		,msdb_package.package_path
+		,step.last_run_duration
+		,step.subsystem
 			
 	FROM msdb.dbo.sysjobsteps AS step
 	JOIN msdb.dbo.sysjobs AS job
@@ -43,7 +45,7 @@ GO
 SELECT msdb_job_step.*
 FROM msdb_job_step
 WHERE 1=1
-AND msdb_job_step.job_name NOT IN 
+AND msdb_job_step.package_name IN 
 (
 	SELECT PkgName 
 	FROM DQMF.dbo.ETL_Package
