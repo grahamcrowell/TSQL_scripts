@@ -1,23 +1,13 @@
---#region CREATE/ALTER PROC dbo.uspDebugBizRule
-USE DSDW
+USE [DSDW]
 GO
-
-DECLARE @name nvarchar(max);
-DECLARE @sql nvarchar(max);
-
-SET @name = 'dbo.uspDebugBizRule';
-SET @sql = FORMATMESSAGE('CREATE PROC %s AS BEGIN SELECT 1 AS [one] END;',@name);
-
-RAISERROR(@name, 0, 0) WITH NOWAIT;
-
-
-IF OBJECT_ID(@name,'P') IS NULL
-BEGIN
-	EXEC(@sql);
-END
+/****** Object:  StoredProcedure [dbo].[uspDebugBizRule]    Script Date: 9/27/2016 12:24:00 PM ******/
+SET ANSI_NULLS ON
 GO
-ALTER PROC dbo.uspDebugBizRule
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROC [dbo].[uspDebugBizRule]
 	@pBrId int
+	,@debug int = 0
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -38,23 +28,32 @@ BEGIN
 		,@cnt int
 		,@sql varchar(max);
 
-	SELECT ShortNameOfTest, br.IsActive, br.IsLogged, TargetObjectPhysicalName, TargetObjectAttributePhysicalName, CreatedDT, UpdatedDT
-	FROM DQMF.dbo.DQMF_BizRule AS br
-	WHERE br.BRId = @pBrId;
+	IF @debug > 0
+	BEGIN
+		-- show info for given BRid
+		SELECT ShortNameOfTest, br.IsActive, br.IsLogged, TargetObjectPhysicalName, TargetObjectAttributePhysicalName, CreatedDT, UpdatedDT
+		FROM DQMF.dbo.DQMF_BizRule AS br
+		WHERE br.BRId = @pBrId;
+	END
 
-	SELECT br_sch.ScheduleID, db.DatabaseName, db.IsActive, db.DatabaseId, pkg.PkgName, pkg.isActive, pkg.PkgID, stg.StageName, stg.StageID
-	FROM DQMF.dbo.DQMF_BizRuleSchedule AS br_sch
-	JOIN DQMF.dbo.DQMF_Schedule AS sch
-	ON br_sch.ScheduleID = sch.DQMF_ScheduleId
-	JOIN DQMF.dbo.ETL_Package AS pkg
-	ON sch.PkgKey = pkg.PkgID
-	JOIN DQMF.dbo.MD_Database AS db
-	ON sch.DatabaseId = db.DatabaseId
-	JOIN DQMF.dbo.DQMF_Stage AS stg
-	ON stg.StageID = sch.StageID
-	WHERE 1=1
-	AND br_sch.BRID = @pBrId
+	IF @debug > 0
+	BEGIN
+		-- show all schedules, stages, databases etc associated with given BRid
+		SELECT br_sch.ScheduleID, db.DatabaseName, db.IsActive, db.DatabaseId, pkg.PkgName, pkg.isActive, pkg.PkgID, stg.StageName, stg.StageID
+		FROM DQMF.dbo.DQMF_BizRuleSchedule AS br_sch
+		JOIN DQMF.dbo.DQMF_Schedule AS sch
+		ON br_sch.ScheduleID = sch.DQMF_ScheduleId
+		JOIN DQMF.dbo.ETL_Package AS pkg
+		ON sch.PkgKey = pkg.PkgID
+		JOIN DQMF.dbo.MD_Database AS db
+		ON sch.DatabaseId = db.DatabaseId
+		JOIN DQMF.dbo.DQMF_Stage AS stg
+		ON stg.StageID = sch.StageID
+		WHERE 1=1
+		AND br_sch.BRID = @pBrId
+	END
 
+	-- arbitrarily find a stage with given br
 	SELECT 
 		TOP 1
 		@StageName=stg.StageName, @StageID=stg.StageID, @PkgName=pkg.PkgName
@@ -74,6 +73,7 @@ BEGIN
 
 	SET @cnt = @@ROWCOUNT;
 
+	-- make sure stage was found
 	IF @cnt = 0
 	BEGIN 
 		RAISERROR('ERROR: Unable to find stage of BR with Active database and pkg',0,1) WITH NOWAIT;
@@ -89,7 +89,7 @@ BEGIN
 	
 
 	BEGIN TRANSACTION
-
+		-- save current IsActive settings for found stage
 		DECLARE @BrIsActive TABLE (Brid int, IsActive bit);
 
 		INSERT INTO @BrIsActive
@@ -106,11 +106,8 @@ BEGIN
 		SET @cnt = @@ROWCOUNT;
 	COMMIT;
 
-	--DECLARE @tranName varchar(100) = 'ExecBr'
-		
-	--BEGIN TRANSACTION @tranName
-		
 	BEGIN TRY
+		-- deactivate br's in found stage
 		UPDATE DQMF.dbo.DQMF_BizRule
 			SET IsActive = 0
 		FROM DQMF.dbo.DQMF_BizRule AS br
@@ -122,11 +119,13 @@ BEGIN
 		ON stg.StageID = sch.StageID
 		WHERE stg.StageID = @StageID
 
+		-- activate given br in found stage
 		UPDATE DQMF.dbo.DQMF_BizRule
 			SET IsActive = 1
 		FROM DQMF.dbo.DQMF_BizRule AS br
 		WHERE br.BRId = @pBrId
 
+		-- get Pkg Exec info (SetAuditPkgExecution)
 		DECLARE @pPkgExecKeyOut int;
 		EXEC DQMF.[dbo].[SetAuditPkgExecution]
 				@pPkgExecKey  = null
@@ -138,6 +137,7 @@ BEGIN
 				,@pIsPackageSuccessful = 0
 				,@pPkgExecKeyOut = @pPkgExecKeyOut OUTPUT
 
+		-- get Extract File info (SetAuditExtractFile)
 		DECLARE @date smalldatetime, @pExtractFileKeyOut int;
 		SET @date = getdate()
 		EXEC DQMF.[dbo].[SetAuditExtractFile]
@@ -148,19 +148,22 @@ BEGIN
 				,@pExtractFileCreatedDT = @date
 				,@pIsProcessSuccess = 0
 				,@pExtractFileKeyOut = @pExtractFileKeyOut OUTPUT
-
-
+		
+		-- tell user what will be executed
+		--IF @debug > 0
 		BEGIN 
-			SELECT FORMATMESSAGE('@pStageName=''%s'', @pExtractFileKey=%d, @pPkgExecKey=%d',@StageName, @pExtractFileKeyOut, @pPkgExecKeyOut);
+			SELECT FORMATMESSAGE('EXEC DSDW.[dbo].[ExecDQMFBizRule]  @pStageName=''%s'', @pExtractFileKey=%d, @pPkgExecKey=%d',@StageName, @pExtractFileKeyOut, @pPkgExecKeyOut);
 			RAISERROR('@pStageName=''%s'', @pExtractFileKey=%d, @pPkgExecKey=%d',0,1,@StageName, @pExtractFileKeyOut, @pPkgExecKeyOut) WITH NOWAIT;
 			RAISERROR('EXECUTING BizRule...',0,1) WITH NOWAIT;
 		END
 
-		EXEC DSDW.[dbo].[ExecDQMFBizRule] 
+		-- Execute found stage using usual DSDW.dbo.ExecDQMFBizRule 
+		EXEC DSDW.dbo.ExecDQMFBizRule 
 				@pStageName = @StageName
 				,@pExtractFileKey = @pExtractFileKeyOut
 				,@debug = 10
-
+		
+		-- return BizRule rows of found stage to original IsActive state
 		UPDATE DQMF.dbo.DQMF_BizRule
 			SET IsActive = bkup.IsActive
 		FROM DQMF.dbo.DQMF_BizRule AS br
@@ -180,6 +183,7 @@ BEGIN
 			,ERROR_LINE() AS ErrorLine  
 			,ERROR_MESSAGE() AS ErrorMessage;  
 		
+		-- return BizRule rows of found stage to original IsActive state
 		UPDATE DQMF.dbo.DQMF_BizRule
 			SET IsActive = bkup.IsActive
 		FROM DQMF.dbo.DQMF_BizRule AS br
@@ -193,27 +197,5 @@ BEGIN
 	RAISERROR('!dbo.uspDebugBizRule: runtime: %i seconds', 0, 1, @runtime) WITH NOWAIT;
 	RETURN(@runtime);
 END
+
 GO
---#endregion CREATE/ALTER PROC dbo.uspDebugBizRule
---EXEC dbo.uspDebugBizRule 
-
-
-
- DECLARE @pPkgName varchar(100);
- DECLARE @StageName varchar(500);
- SET @StageName= 'CommunityMart Post Process'
- SET @pPkgName = 'PopulateCommunityMart';
-
-SELECT *
-FROM DQMF.dbo.DQMF_BizRule AS br
-WHERE br.TargetObjectPhysicalName LIKE '%WaitTimeFact'
-AND ShortNameOfTest NOT LIKE '%denormal%'
-
-DECLARE @brAudio int = 117516
-DECLARE @brPreNatal int = 117593
-DECLARE @brSLPtherepy int = 117632
-DECLARE @brSLPAx int = 117667
-
-EXEC DSDW.dbo.uspDebugBizRule @pBrId = @brSLPAx
-
-

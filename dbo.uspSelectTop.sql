@@ -5,6 +5,7 @@ GO
 DECLARE @name nvarchar(max);
 DECLARE @sql nvarchar(max);
 
+SET @name = 'dbo.uspSelectTop';
 SET @sql = FORMATMESSAGE('CREATE PROC %s AS BEGIN SELECT 1 AS [one] END;',@name);
 
 RAISERROR(@name, 0, 0) WITH NOWAIT;
