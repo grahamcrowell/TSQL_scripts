@@ -14,8 +14,7 @@ SET IsActive = 0
 FROM DQMF.dbo.DQMF_BizRule AS br
 -- 32 is CommunityMart
 WHERE br.DatabaseId = 32
-AND br.Sequence NOT BETWEEN 499 AND 600
-
+AND br.SourceAttributePhysicalName  LIKE '%Gravida%'
 
 UPDATE DQMF.dbo.DQMF_BizRule
 SET IsActive = 1
@@ -23,8 +22,8 @@ FROM DQMF.dbo.DQMF_BizRule AS br
 -- 32 is CommunityMart
 WHERE br.DatabaseId = 32
 AND br.TargetObjectPhysicalName LIKE '%BirthFact%'
-AND br.Sequence BETWEEN 499 AND 600
-AND br.SourceAttributePhysicalName NOT LIKE '%Gravida%'
+--AND br.Sequence BETWEEN 499 AND 600
+--AND br.SourceAttributePhysicalName NOT LIKE '%Gravida%'
 --AND br.Sequence = 500
 GO
 
@@ -51,7 +50,7 @@ GO
 
 -- set everything that's inactive in TEST to inactive in DEV
 UPDATE dev_br
-SET IsActive = 0
+SET IsActive = test_br.IsActive
 FROM DQMF.dbo.DQMF_BizRule AS dev_br
 JOIN STDBDECSUP02.DQMF.dbo.DQMF_BizRule AS test_br
 ON test_br.guid = dev_br.guid
