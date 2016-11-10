@@ -14,7 +14,7 @@ SET IsActive = 0
 FROM DQMF.dbo.DQMF_BizRule AS br
 -- 32 is CommunityMart
 WHERE br.DatabaseId = 32
-AND br.SourceAttributePhysicalName  LIKE '%Gravida%'
+--AND br.SourceAttributePhysicalName  LIKE '%Gravida%'
 
 UPDATE DQMF.dbo.DQMF_BizRule
 SET IsActive = 1
@@ -23,7 +23,7 @@ FROM DQMF.dbo.DQMF_BizRule AS br
 WHERE br.DatabaseId = 32
 AND br.TargetObjectPhysicalName LIKE '%BirthFact%'
 --AND br.Sequence BETWEEN 499 AND 600
---AND br.SourceAttributePhysicalName NOT LIKE '%Gravida%'
+AND ISNULL(br.SourceAttributePhysicalName,'') NOT LIKE '%Gravida%'
 --AND br.Sequence = 500
 GO
 
