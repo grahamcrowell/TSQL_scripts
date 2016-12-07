@@ -1,0 +1,142 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Math257 Take Home #3</title><meta name="generator" content="MATLAB 8.3"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2016-12-04"><meta name="DC.source" content="AmplituteAndPhaseSpectrum.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h1>Math257 Take Home #3</h1><p><a href="https://engineering.purdue.edu/ME365/Textbook/chapter8.pdf">https://engineering.purdue.edu/ME365/Textbook/chapter8.pdf</a> The Fourier coeffcients of the signal <img src="AmplituteAndPhaseSpectrum_eq84547.png" alt="$s(t)$"> are given by</p><p><img src="AmplituteAndPhaseSpectrum_eq69881.png" alt="$$C_k=\frac{\sqrt{2}}{k}-\frac{\sqrt{2}}{k}j$">$ when <img src="AmplituteAndPhaseSpectrum_eq80041.png" alt="$k \neq 0$"> and <img src="AmplituteAndPhaseSpectrum_eq54664.png" alt="$C_0=1$"></p><pre class="codeinput">clc;clear;
+<span class="comment">% ch8f6.m program to plot the Fourier Coefficients</span>
+<span class="comment">% of a pulse train. T1=T/4 and T=0.125second.</span>
+<span class="comment">% https://engineering.purdue.edu/ME365/Textbook/chapter8.pdf</span>
+<span class="comment">%</span>
+Xl=1;
+T=0.125;
+T1=T/4;
+A0_2=Xl*T1/T;
+k=1:18;
+<span class="comment">% Ak=Xl*sin(2*pi*k*T1/T)./(k*pi);</span>
+<span class="comment">% Bk=Xl*(1-cos(3*pi*k*T1/T))./(k*pi);</span>
+</pre><p><img src="AmplituteAndPhaseSpectrum_eq15342.png" alt="$x^2+e^{\pi i}$"></p><pre class="codeinput">A0_2=1;
+Ck=sqrt(2)./k-sqrt(2)./k*1i;
+Ak=2*real(Ck);
+Bk=2*imag(Ck);
+
+
+Thk=atan2(Bk,Ak);
+Mk=sqrt(Ak.*Ak+Bk.*Bk);
+fk=k/T;
+subplot(221)
+stem([0 fk],[A0_2 Mk])
+xlabel(<span class="string">'Frequency &#8211; Hz'</span>)
+ylabel(<span class="string">'Amplitude/X1 &#8211; V'</span>)
+title(<span class="string">'AMPLITUDE SPECTRUM'</span>)
+subplot(222)
+stem([0 fk],[0 Thk])
+xlabel(<span class="string">'Frequency &#8211; Hz'</span>)
+ylabel(<span class="string">'Phase - rads.'</span>)
+title(<span class="string">'PHASE SPECTRUM'</span>)
+</pre><img vspace="5" hspace="5" src="AmplituteAndPhaseSpectrum_01.tif" alt=""> <p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2014a</a><br></p></div><!--
+##### SOURCE BEGIN #####
+%% Math257 Take Home #3
+% <https://engineering.purdue.edu/ME365/Textbook/chapter8.pdf>
+% The Fourier coeffcients of the signal $s(t)$ are given by
+% 
+% $$C_k=\frac{\sqrt{2}}{k}-\frac{\sqrt{2}}{k}j$$
+% when $k \neq 0$ and $C_0=1$
+clc;clear;
+% ch8f6.m program to plot the Fourier Coefficients
+% of a pulse train. T1=T/4 and T=0.125second.
+% https://engineering.purdue.edu/ME365/Textbook/chapter8.pdf
+%
+Xl=1; 
+T=0.125; 
+T1=T/4;
+A0_2=Xl*T1/T;
+k=1:18;
+% Ak=Xl*sin(2*pi*k*T1/T)./(k*pi);
+% Bk=Xl*(1-cos(3*pi*k*T1/T))./(k*pi);
+%%
+% $x^2+e^{\pi i}$
+A0_2=1;
+Ck=sqrt(2)./k-sqrt(2)./k*1i;
+Ak=2*real(Ck);
+Bk=2*imag(Ck);
+
+
+Thk=atan2(Bk,Ak);
+Mk=sqrt(Ak.*Ak+Bk.*Bk);
+fk=k/T;
+subplot(221)
+stem([0 fk],[A0_2 Mk])
+xlabel('Frequency – Hz')
+ylabel('Amplitude/X1 – V')
+title('AMPLITUDE SPECTRUM')
+subplot(222)
+stem([0 fk],[0 Thk])
+xlabel('Frequency – Hz')
+ylabel('Phase - rads.')
+title('PHASE SPECTRUM')
+##### SOURCE END #####
+--></body></html>
