@@ -1,0 +1,5 @@
+{
+	"cmd": ["%SystemRoot%\\system32\\WindowsPowerShell\\v1.0\\powershell.exe", "C:\\Users\\gcrowell\\Documents\\GitHub\\PowerShell\\sublime_build.ps1"],
+	"shell_cmd": "%SystemRoot%\\system32\\WindowsPowerShell\\v1.0\\powershell.exe C:\\Users\\gcrowell\\Documents\\GitHub\\PowerShell\\sublime_build.ps1",
+	"shell": true
+}
