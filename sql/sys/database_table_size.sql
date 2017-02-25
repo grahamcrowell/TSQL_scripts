@@ -1,6 +1,16 @@
 USE CommunityMart
 GO
 
+EXEC sp_spaceused @updateusage = N'TRUE';  
+GO  
+
+EXEC sp_spaceused N'dbo.ReferralFact';  
+GO  
+
+DBCC SHRINKDATABASE (AutoTest, 10);  
+GO
+
+
 SELECT 
     t.NAME AS TableName,
     s.Name AS SchemaName,
@@ -29,7 +39,7 @@ ORDER BY
 
 
 
-USE DSDW 
+USE AutoTest 
 GO
 
 EXEC sp_MSforeachtable @command1 = '
