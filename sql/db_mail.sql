@@ -30,7 +30,7 @@ ORDER BY log_date DESC
 
 SELECT *
 FROM msdb.dbo.sysmail_event_log
-
+ORDER BY log_date DESC
 EXECUTE msdb.dbo.sysmail_help_principalprofile_sp  
     --@principal_name = 'danw',  
     @profile_name = 'DecisionSupport';  
