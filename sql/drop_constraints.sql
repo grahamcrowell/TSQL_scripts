@@ -128,4 +128,9 @@ SELECT @runtime=DATEDIFF(second, @start, sysdatetime());
 END
 GO
 --#endregion CREATE/ALTER PROC dbo.uspDropConstraints
-EXEC dbo.uspDropConstraints @pSchemaName = 'dbo', @pTableName = 'TestConfig'
+
+EXEC dbo.uspDropConstraints @pSchemaName = 'dbo', @pTableName = 'column_info'
+EXEC dbo.uspDropConstraints @pSchemaName = 'dbo', @pTableName = 'server_info'
+EXEC dbo.uspDropConstraints @pSchemaName = 'dbo', @pTableName = 'table_info'
+EXEC dbo.uspDropConstraints @pSchemaName = 'dbo', @pTableName = 'database_info'
+EXEC dbo.uspDropConstraints @pSchemaName = 'dbo', @pTableName = 'table_profile'

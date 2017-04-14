@@ -1,5 +1,5 @@
-
-
+# http://www.get-blog.com/?p=189
+# 
 #.Synopsis
 #    This is a quick and open-ended script multi-threader searcher
 #    
