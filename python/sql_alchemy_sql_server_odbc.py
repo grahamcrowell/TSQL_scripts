@@ -36,8 +36,8 @@ class Director(Base):
     def __repr__(self):
         return "Director(%r)" % (self.name)
 
-# engine = create_engine('mssql+pyodbc://sa:2and2is5@MsSqlODbc')
-params = urllib.parse.quote_plus("DRIVER={ODBC Driver 13 for Sql Server};SERVER=localhost;DATABASE=AutoTest;UID=sa;PWD=2and2is5")
+# engine = create_engine('mssql+pyodbc://sa:@MsSqlODbc')
+params = urllib.parse.quote_plus("DRIVER={ODBC Driver 13 for Sql Server};SERVER=localhost;DATABASE=AutoTest;UID=sa;PWD=")
 engine = create_engine('mssql+pyodbc:///?odbc_connect='+params)
 Base.metadata.create_all(engine)
 

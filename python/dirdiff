@@ -1,7 +1,15 @@
-#! /usr/bin/python 
+#! /usr/bin/python
 # dirdiff
-import hashlib,sys,os,logging,inspect,UserDict
-import timing
+import hashlib
+import sys
+import os
+import logging
+import inspect
+import UserDict
+import itertools
+import curses
+import time
+import timing # https://stackoverflow.com/questions/1557571/how-do-i-get-time-of-a-python-programs-execution/1557906#1557906
 
 # create logger
 logger = logging.getLogger(__file__)
@@ -13,7 +21,8 @@ ch.setLevel(logging.DEBUG)
 
 
 # create formatter
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
 
 # add formatter to ch
@@ -21,6 +30,7 @@ ch.setFormatter(formatter)
 
 # add ch to logger
 logger.addHandler(ch)
+
 
 # @TODO add colours to debug output
 class bcolors:
@@ -33,27 +43,35 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
+def alert(msg):
+    return "{}{}".format(bcolors.FAIL, msg)
+
+print("{}".format(alert("OOGA booga")))
+
 class DataFile:
-    def __init__(self, data_root_path, file_absolute_path):
-        self.file_absolute_path = file_absolute_path
-        self.data_root_path = data_root_path
-        self.file_relative_path = os.path.relpath(self.file_absolute_path, self.data_root_path)
-        self.size = fileSize(file_absolute_path)
-        self.hash = fileHash(file_absolute_path)
+    def __init__(self, root_path, abspath):
+        self.abspath = abspath
+        self.root_path = root_path
+        self.relpath = os.path.relpath(self.abspath, self.root_path)
+        self.size = fileSize(abspath)
+        self.hash = fileHash(abspath)
 
     def __str__(self):
-        return "DataFile({data_root_path}, {file_relative_path})".format(**self.__dict__)
+        return "DataFile({root_path}, {relpath})".format(**self.__dict__)
+
     def __repr__(self):
         return str(self)
+
     def __eq__(self, rhs):
-        return self.hash == rhs.hash
+        return self.hash == rhs.hash and self.relpath == self.relpath
+
     def __hash__(self):
         return hash(self.hash)
+
 
 class DataDir(UserDict.IterableUserDict):
     def __init__(self, root_path):
         self.root_path = root_path
-        self.data_files = {}
         (UserDict.IterableUserDict).__init__(self)
 
     def process(self):
@@ -63,37 +81,62 @@ class DataDir(UserDict.IterableUserDict):
             _data_files = map(lambda file_path: DataFile(self.root_path,file_path), file_paths)
             for data_file in _data_files:
                 print(data_file)
-                if data_file.hash not in self.data_files:
-                    self.data_files[data_file.hash] = []
+                if data_file.hash not in self:
                     self[data_file.hash] = []
-                self.data_files[data_file.hash].append(data_file)
                 self[data_file.hash].append(data_file)
 
-        # self.data_files.update(_data_files)
+    def getPaths(self, hash_str=None):
+        if hash_str is None:
+            return chain(map(lambda data_file: data_file.relpath, self.values()))
+        return map(lambda data_file: data_file.relpath, self[hash_str])
 
-class DataDirDiff:
+
+class DataDirDiffer:
     def __init__(self, src, dst):
         self.src = src
         self.dst = dst
         self.src_data_dir = DataDir(self.src)
         self.dst_data_dir = DataDir(self.dst)
+
     def process(self):
         self.src_data_dir.process()
         self.dst_data_dir.process()
+
     def missingInDestination(self):
-        return [self.src_data_dir[src_hash] for src_hash in set(self.src_data_dir.keys()) - set(self.dst_data_dir.keys())]
+        return [hash_str for hash_str in set(self.src_data_dir.keys()) - set(self.dst_data_dir.keys())]
+
+    def missingFromSource(self):
+        return [hash_str for hash_str in set(self.dst_data_dir.keys()) - set(self.src_data_dir.keys())]
+
     def movedInDestination(self):
-        for src_hash in set(self.src_data_dir.keys()) & set(self.dst_data_dir.keys()):
-            pass
+        intersecting_hashs = [src_dst_hash for src_dst_hash in set(self.src_data_dir.keys()) & set(self.dst_data_dir.keys())]
+        moved_hashs = []
+        for file_hash in intersecting_hashs:
+            src_paths = set(self.src_data_dir.getPaths(file_hash))
+            dst_paths = set(self.dst_data_dir.getPaths(file_hash))
+            if src_paths != dst_paths:
+                moved_hashs.append(file_hash)
+        return moved_hashs
+
+    def __repr__(self):
+        return "DataDirDiffer({}, {})".format(self.src, self.dst)
+
     def __str__(self):
-        return "DataDirDiff({}, {})".format(self.src, self.dst)
+        out = ""
+        """
+Folder Comparison:
+
+Source: {}\n
+Destination: {}\n
+
+
+"""
+
 
 def readableFileSize(byte_count):
     """
     @brief      formats number of bytes into human readable size with units
-    
     @param      byte_count  number of bytes
-    
     @return     human readable file size with units
     """
     for x in ['bytes', 'KB', 'MB', 'GB', 'TB']:
@@ -105,9 +148,7 @@ def readableFileSize(byte_count):
 def fileSize(file_path):
     """
     @brief      human readable file size
-    
     @param      file_path  The file path
-    
     @return     human readable file size with units
     """
     if os.path.isfile(file_path):
@@ -118,10 +159,9 @@ def fileSize(file_path):
 def fileHash(file_path):
     """
     @brief      compute hash of a file at file_path.
-    
     @param      file_path  The file path
-    
-    @return     Attempts to hash a file assumed to exist and be readable.  Exceptions are caught and logged.
+    @return     Attempts to hash a file assumed to exist and be readable.
+                Exceptions are caught and logged.
     """
     # timing.log("hashing: {} {}".format(file_path, fileSize(file_path)))
     hash_str = ""
@@ -139,23 +179,34 @@ def fileHash(file_path):
         method_name = inspect.stack()[0][3]
         logger.warning("failed to hash file: {}\n\t{}".format(file_path,e))
 
+
 def usage():
     print("learn to drive")
+    lhs = "/Users/gcrowell/TEST_DATA/esldata/mock_tenant_root"
+    rhs = "/Users/gcrowell/TEST_DATA/esldata/mock_tenant_root2"
+    dir_diff = DataDirDiffer(lhs, rhs)
+    dir_diff.process()
+    # print(dir_diff.missingInDestination())
+    print(dir_diff.movedInDestination())
+    return dir_diff
 
-def main():
+def process(lhs=None, rhs=None):
     if len(sys.argv) == 3:
         logger.info("starting:\n\tsys.argv[1] = {}\n\tsys.argv[2] = {}\n\t".format(sys.argv[1],sys.argv[2]))
         lhs = sys.argv[1]
         rhs = sys.argv[2]
-        dir_diff = DataDirDiff(lhs, rhs)
+        dir_diff = DataDirDiffer(lhs, rhs)
         dir_diff.process()
-        dir_diff.missingInDestination()
+        # print(dir_diff.missingInDestination())
+        print(dir_diff.movedInDestination())
         return dir_diff
     else:
-        usage()
+        return usage()
+
+
+def main():
+    process()
+
 
 if __name__ == '__main__':
     main()
-
-
-
