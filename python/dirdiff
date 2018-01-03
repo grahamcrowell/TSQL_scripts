@@ -11,6 +11,7 @@ import curses
 import time
 import time
 import json
+import collections
 import timing # https://stackoverflow.com/questions/1557571/how-do-i-get-time-of-a-python-programs-execution/1557906#1557906
 
 # create logger
@@ -99,15 +100,16 @@ class DataDir(UserDict.IterableUserDict):
 
 class DirDiff:
     def __init__(self, src_path, dst_path, only_src, not_moved, moved, only_dst):
-        self._src_path = src_path
-        self._dst_path = dst_path
-        self.only_src = only_src
-        self.moved = moved
-        self.not_moved = not_moved
-        self.only_dst = only_dst
+        self.ordered_dict = collections.OrderedDict()
+        self.ordered_dict["Source Path"] = src_path
+        self.ordered_dict["Destination Path"] = dst_path
+        self.ordered_dict["Source Only"] = only_src
+        self.ordered_dict["Destination Only"] = only_dst
+        self.ordered_dict["Both but moved"] = moved
+        self.ordered_dict["Both and not moved"] = not_moved
 
     def __str__(self):
-        return json.dumps(self.__dict__, indent=2, sort_keys=True)
+        return json.dumps(self.ordered_dict, indent=2)
 
     def __repr__(self):
         return self.__str__()
