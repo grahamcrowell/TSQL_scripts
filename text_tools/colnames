@@ -1,0 +1,42 @@
+#! /usr/bin/env bash
+
+SCRIPT_NAME=`basename "$0"`
+
+usage() { echo "Usage: $SCRIPT_NAME -d <\",\",\"|\",\"\\t\"> [-f <filename>]" 1>&2; exit 1; }
+
+function column_list() {
+  DELIMITER=$1
+  FILE=$2
+  head -n 1 $FILE | awk -v DELIMITER=$DELIMITER 'BEGIN { FS=DELIMITER } { for(i = 1; i <= NF; i++) { printf("%d  %s\n", i, $i) } } '
+}
+
+while getopts ":d:f:" ARGS; do
+    case "${ARGS}" in
+        d)
+            d=${OPTARG}
+            # ((d == "," || d == "\t")) || usage
+            ;;
+        f)
+            f=${OPTARG}
+            ;;
+        *)
+            usage
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+if [ -z "${d}" ]; then
+    usage
+fi
+
+if [ -z "${f}" ]; then
+    find * -type f | while read FILE; do
+        printf "\n${FILE}\n";
+        column_list $d $FILE;
+    done;
+else
+    column_list $d $f;
+fi
+# echo "d = ${d}"
+# echo "f = ${f}"

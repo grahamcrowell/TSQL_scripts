@@ -1,0 +1,38 @@
+#! /usr/bin/env bash
+
+SCRIPT_NAME=`basename "$0"`
+
+usage() { echo "Usage: $SCRIPT_NAME OUTPUT_COLUMN [DELIMITER] [FILE]" 1>&2; exit 1; }
+
+function column_select() {
+  OUTPUT_COLUMN=$1
+  FILE=$2
+  DELIMITER=$3
+  tail -n +2 $FILE | awk -v OUTPUT_COLUMN=$OUTPUT_COLUMN -v DELIMITER=$DELIMITER 'BEGIN { FS=DELIMITER } { printf("%s\n", $OUTPUT_COLUMN) } '
+}
+
+if [ $# -eq 0 ]
+then
+  usage
+elif [ $# -eq 2 ]
+then
+  OUTPUT_COLUMN=$1
+  FILE=$2
+  column_select $OUTPUT_COLUMN $FILE 
+elif [ $# -eq 3 ]
+then
+  OUTPUT_COLUMN=$1
+  FILE=$2
+  DELIMITER=$3
+  column_select $OUTPUT_COLUMN $FILE $DELIMITER
+elif [ $# -eq 1 ]
+then
+  OUTPUT_COLUMN=$1
+  find * -type f | while read FILE; do
+    column_select $OUTPUT_COLUMN $FILE 
+  done;
+else
+  exit 1
+fi
+
+

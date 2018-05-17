@@ -1,0 +1,40 @@
+#! /usr/bin/env bash
+
+SCRIPT_NAME=`basename "$0"`
+
+usage() { echo "Usage: $SCRIPT_NAME COLUMN_NUMBER [FILE]" 1>&2; exit 1; }
+
+function column_sample() {
+  COLUMN=$1
+  DELIMITER=$2
+  FILE=$3
+  echo 
+  printf "%s\n" $FILE
+  head -n 1 $FILE | awk -v COLUMN=$COLUMN -v DELIMITER=$DELIMITER 'BEGIN { FS=DELIMITER } { printf("histogram: %s\n", $COLUMN) } '
+  tail -n +2 $FILE | awk -v COLUMN=$COLUMN -v DELIMITER=$DELIMITER 'BEGIN { FS=DELIMITER } { printf("%s\n", $COLUMN) } ' | sort | uniq -c | column -t
+}
+
+if [ $# -eq 2 ];
+then
+  COLUMN=$1
+  DELIMITER="|"
+  FILE=$2
+  column_sample $COLUMN $DELIMITER $FILE 
+elif [ $# -eq 3 ];
+then
+  COLUMN=$1
+  DELIMITER=$2
+  FILE=$3
+  column_sample $COLUMN $DELIMITER $FILE 
+elif [ $# -eq 1 ];
+then
+  printf "iterating over all files in:%s\n" $PWD
+  COLUMN=$1
+  DELIMITER="|"
+  find * -type f | while read FILE; do
+    column_sample $COLUMN $DELIMITER $FILE;
+  done;
+else
+  usage
+fi
+
