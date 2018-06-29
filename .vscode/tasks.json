@@ -10,7 +10,7 @@
     },
     {
       "taskName": "execute_script",
-      "command": "./main.sh",
+      "command": "${file}",
       "type": "shell",
       "group": {
         "kind": "build",

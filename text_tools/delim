@@ -1,0 +1,48 @@
+#! /usr/bin/env bash
+
+function test_delim() {
+    FILE="$1";
+    DELIM="$2";
+    # count number of $DELIM occurances in first line of file
+    header_count=`head -n 1 $FILE | awk -F$DELIM '{print NF-1}'`
+    # if $DELIM doesn't occur in first line of file exit with 1 to indicate failure
+    if [[ $header_count -eq 0 ]];
+    then
+        return 1;
+    fi;
+    # count average number of $DELIM occurances in first 5 data lines of file
+    data_avg_count=`sed -n 2,5p $FILE | awk -F$DELIM '{print NF-1}' | awk '{ total += $1; count++ } END { print total/count }'`
+    # echo $header_count
+    # echo $data_avg_count
+    # header and data line average agree than return 0 to indicate $DELIM is a delimiter of file
+    if [[ $header_count -eq $data_avg_count ]];
+    then
+        return 0;
+    fi;
+    return 1;
+}
+
+# FILE="/Users/gcrowell/Documents/git/scripts/text_tools/tests/data/pipe_delim.txt"
+# DELIM=","
+# test_delim $FILE $DELIM;
+
+function delim() {
+    FILE="$1";
+    DELIMS=("|" "," "\t");
+    # loop over array of potiential delimiter characters
+    for delim in ${DELIMS[@]}; do
+        # printf "%s\n" $delim;
+        test_delim $FILE $delim
+        is_delim=$?;
+        if [[ $is_delim -eq 0 ]];
+        then
+            echo $DELIM;
+            return 0;
+        fi;
+    done;
+    return 1;
+}
+
+# FILE="/Users/gcrowell/Documents/git/scripts/text_tools/tests/data/pipe_delim.txt"
+# DELIM=`delim $FILE`;
+# printf "DELIM of %s\nis: %s\n" $FILE $DELIM

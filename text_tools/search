@@ -1,0 +1,55 @@
+#! /usr/bin/env bash
+
+SCRIPT_NAME=`basename "$0"`
+
+usage() { echo "Usage: $SCRIPT_NAME -s <content_grep> [-f <filename_regex_filter>]" 1>&2; exit 1; }
+
+function wheres_waldo() {
+    FILE=$1
+    CONTENT_GREP=$2
+
+    cat $FILE | grep -E "$CONTENT_GREP" > /dev/null 2>&1;
+    found=$?;
+    if [[ $found -eq 0 ]];
+        then printf "found: ${GREEN}${FILE}\n${RESET}";
+        cat $FILE | grep -E "$CONTENT_GREP" | grep --color "$CONTENT_GREP";
+    fi;
+    printf "${RESET}";
+    return $found;
+}
+
+while getopts ":s:f:" ARGS; do
+    case "${ARGS}" in
+        s)
+            s=${OPTARG}
+            # ((d == "," || d == "\t")) || usage
+            ;;
+        f)
+            f=${OPTARG}
+            ;;
+        *)
+            usage
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+if [ -z "${s}" ]; then
+    usage
+else
+    printf "searching for: ${CYAN}${s}\n${RESET}"
+fi
+
+
+if [ -z "${f}" ]; then
+    find * -maxdepth 1 -type f | while read FILE; do
+        wheres_waldo "${FILE}" "${s}";
+    done;
+else
+    find * -maxdepth 1 -type f | grep -E "${f}" | while read FILE; do
+        wheres_waldo "${FILE}" "${s}";
+    done;
+fi
+
+
+printf "search for: ${CYAN}${s}${RESET} complete.\n\n--------------------------------------------------\n\n"
