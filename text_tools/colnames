@@ -2,7 +2,7 @@
 
 SCRIPT_NAME=`basename "$0"`
 
-usage() { echo "Usage: $SCRIPT_NAME -d <\",\",\"|\",\"\\t\"> [-f <filename>]" 1>&2; exit 1; }
+usage() { echo "Usage: $SCRIPT_NAME [-d <\",\",\"|\",\"\\t\">] -f <filename>" 1>&2; exit 1; }
 
 function column_list() {
   DELIMITER=$1
@@ -26,17 +26,13 @@ while getopts ":d:f:" ARGS; do
 done
 shift $((OPTIND-1))
 
-if [ -z "${d}" ]; then
-    usage
-fi
-
 if [ -z "${f}" ]; then
-    find * -type f | while read FILE; do
-        printf "\n${FILE}\n";
-        column_list $d $FILE;
-    done;
-else
-    column_list $d $f;
+    printf "-f parameter is required\n";
+    usage;
+    exit 1;
 fi
-# echo "d = ${d}"
-# echo "f = ${f}"
+if [ -z "${d}" ]; then
+    # delimiter not given; use delim script to get delimiter
+    d=`delim $f`;
+fi
+column_list "${d}" "${f}"

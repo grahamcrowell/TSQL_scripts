@@ -3,8 +3,7 @@ echo "$0"
 # sourced in ~/.profile
 # https://serverfault.com/a/261807
 
-SCRIPTS_FOLDER=$HOME/Documents/git/scripts
-SCRIPTS_FOLDER=$HOME/Documents/git/scripts
+export SCRIPTS_FOLDER=$HOME/Documents/git/scripts
 # folder shortcuts
 export RELEASE_BRANCH=RELEASE-20180519-VEYRON
 export HGDIR=$HOME/Documents/hg
@@ -23,6 +22,7 @@ export RESET=$(tput sgr0)
 
 
 # update path
+export PATH="$HOME/.cargo/bin:$PATH"
 export PATH=$SCRIPTS_FOLDER/bash:/usr/local/bin:$PATH
 export PATH=$SCRIPTS_FOLDER/python:$PATH
 export PATH=$SCRIPTS_FOLDER/text_tools:$PATH
@@ -42,19 +42,4 @@ REPOSITORY_TYPE = \"mercurial\""
 
 export env=$0
 
-export PATH="$HOME/.cargo/bin:$PATH"
-
-function hgblog() {
-    if [[ -z $1 ]];
-    then
-        BRANCH=`hg branch`
-        if [[ $? -ne 0 ]]
-        then
-            return 1;
-        fi
-    else
-        BRANCH="$1"
-    fi
-    hg log --graph --template "{label('custom.cyan',branches)} [{date|age} by {label('custom.bold',author)}]\n{label('custom.yellow',node|short)} {desc}\n\n" --rev "parents(min(branch($BRANCH))) or branch($BRANCH) or (max(branch('re:RELEASE-.*-VEYRON') and ancestors(branch($BRANCH))))"
-    return 0;
-}
+export esl="ESL/tenant-domains/src/main/scala/visier/data/domains/tenant"

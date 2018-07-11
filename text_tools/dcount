@@ -1,0 +1,10 @@
+#! /usr/bin/env bash
+
+function count_token() {
+    TOKEN=$1
+    STRING=$2
+    echo $STRING | awk -F$TOKEN ' { print NF-1 } '
+    return 0;
+}
+
+count_token $1 $2

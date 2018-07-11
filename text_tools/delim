@@ -28,6 +28,7 @@ function test_delim() {
 
 function delim() {
     FILE="$1";
+    # printf "inferring delimiter of file: '%s'" "$FILE";
     DELIMS=("|" "," "\t");
     # loop over array of potiential delimiter characters
     for delim in ${DELIMS[@]}; do
@@ -46,3 +47,4 @@ function delim() {
 # FILE="/Users/gcrowell/Documents/git/scripts/text_tools/tests/data/pipe_delim.txt"
 # DELIM=`delim $FILE`;
 # printf "DELIM of %s\nis: %s\n" $FILE $DELIM
+delim "$1"

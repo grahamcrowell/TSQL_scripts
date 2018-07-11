@@ -1,0 +1,52 @@
+#! /usr/bin/env bash
+source $SCRIPTS/shared.sh;
+
+###################################################
+# LAST DATA VERSION
+
+# returns the most recent DV for current the tenant
+###################################################
+
+usage() {
+        echo "usage: `basename $0` [-v] [-h]";
+}
+
+while getopts :vh ARG; do
+        case $ARG in
+                h) usage; exit ;;
+                v) verbose=true ;;
+                :) echo "Missing argument for option -$OPTARG"; usage; exit 1;;
+                \?) echo "Unknown option -$OPTARG"; usage; exit 1;;
+    esac
+done
+
+list_newest_DVs() {
+        FQ_TENANT=WFF_$(tenant);
+        if [[ $FQ_TENANT != WFF_ ]];
+        then
+                printf "${GREEN}${FQ_TENANT}${RESET}\n";
+                find /workspaces/ServerData/cache/local/${FQ_TENANT} -maxdepth 1 -atime -14 -user $USER -exec stat --format "%z %n" '{}' \; | sort -r | grep -E ".*[0-9]+$" | head -n 10 | awk ' { print $4 } ' | xargs -I'{}' basename '{}';
+                exit 0;
+        fi;
+}
+
+
+get_latest_DV() {
+        FQ_TENANT=WFF_$(tenant);
+        if [[ $FQ_TENANT != WFF_ ]];
+        then
+                find /workspaces/ServerData/cache/local/${FQ_TENANT} -maxdepth 1 -atime -14 -user $USER -exec stat --format "%z %n" '{}' \; | sort -r | grep -E ".*[0-9]+$" | head -n 1 | awk ' { print $4 } ' | xargs -I'{}' basename '{}';
+                exit 0;
+        fi;
+}
+
+hgtest $0;
+if [ $? -ne 0 ]; then
+        printf "${RED}${BOLD}ERROR ($0): unable to determine tenant from branch name.${RESET}\n";
+        exit 1;
+        return 1;
+elif [ $verbose ]; then
+        list_newest_DVs;
+else
+        get_latest_DV;
+fi;
