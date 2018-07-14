@@ -3,11 +3,13 @@ echo "$0"
 # sourced in ~/.profile
 # https://serverfault.com/a/261807
 
-export SCRIPTS_FOLDER=$HOME/Documents/git/scripts
-# folder shortcuts
 export RELEASE_BRANCH=RELEASE-20180519-VEYRON
+# folder shortcuts
+export SCRIPTS=`dirname $env`
+export SCRIPTS=`dirname $SCRIPTS`
 export HGDIR=$HOME/Documents/hg
 export DIFFDIR=$HGDIR/diffs
+
 # colour shortcuts: https://linuxtidbits.wordpress.com/2008/08/11/output-color-on-bash-scripts/
 export RED=$(tput setaf 1)
 export GREEN=$(tput setaf 2)
@@ -23,23 +25,23 @@ export RESET=$(tput sgr0)
 
 # update path
 export PATH="$HOME/.cargo/bin:$PATH"
-export PATH=$SCRIPTS_FOLDER/bash:/usr/local/bin:$PATH
-export PATH=$SCRIPTS_FOLDER/python:$PATH
-export PATH=$SCRIPTS_FOLDER/text_tools:$PATH
-export PATH=$SCRIPTS_FOLDER/visier:$PATH
-export PATH=$SCRIPTS_FOLDER/visier/deployment_tools:$PATH
+export PATH=$SCRIPTS/bash:/usr/local/bin:$PATH
+export PATH=$SCRIPTS/python:$PATH
+export PATH=$SCRIPTS/text_tools:$PATH
+export PATH=$SCRIPTS/visier:$PATH
+export PATH=$SCRIPTS/visier/deployment_tools:$PATH
+export PATH=$SCRIPTS/hg:$PATH
 
 # hg commands
-export PATH=$SCRIPTS_FOLDER/hg:$PATH
 
 export Demographics=~/Documents/hg/com.visiercorp.vserver/db_publish/DB/20140124/Demographics/0
 alias cut="cut -d '|'"
 export DEPLOYMENT=~/Documents/hg/deployment
 
-rbtrc="REVIEWBOARD_URL = \"http://reviews.visier.corp/\"
+rbtrc="REVIEWBOARD_URL = \"reviews.dev.visier.network/\"
 REPOSITORY = \"deployment\"
-REPOSITORY_TYPE = \"mercurial\""
-
-export env=$0
+REPOSITORY_TYPE = \"mercurial\"
+API_TOKEN = \"b877988956986ac186390d69c51464e926dd2033\""
 
 export esl="ESL/tenant-domains/src/main/scala/visier/data/domains/tenant"
+

@@ -1,0 +1,172 @@
+#! /usr/bin/env bash
+
+SCRIPT_NAME=`basename "$0"`
+
+usage() {
+    echo "Usage: $SCRIPT_NAME -s <data_regex_filter> [-f <filename_regex_filter>] [-o <output_column_expr>] [-l <line_limit_per_file>]" 1>&2; 
+    echo "" 1>&2; 
+    echo "data_regex_filter     : filesnames will be searched for this.  (grep -E \"data_regex_filter\")" 1>&2; 
+    echo "filename_regex_filter : file content will be searched for this.  (grep -E \"filename_regex_filter\")" 1>&2; 
+    echo "output_column_expr    : specify which columns to output. " 1>&2; 
+    echo "line_limit_per_file   : limit the number of results returned per file. (default=10)" 1>&2; 
+    echo "" 1>&2; 
+    echo "Notes:" 1>&2; 
+    echo "- searches all files in current directory is subdirectories (ie. maxdepth=1)" 1>&2; 
+    echo "- " 1>&2; 
+    echo "" 1>&2; 
+    echo "Examples:" 1>&2; 
+    printf "\tquery -s 1234\n" 1>&2;
+    printf "search all files under working directory for \"1234\"\n" 1>&2;
+    printf "\tquery -s \"1234|4321\" -f 201501.*/.*Employee\n" 1>&2;
+    printf "search all files under working directory for \"1234\"\n" 1>&2;
+    echo "" 1>&2; 
+    echo "" 1>&2; 
+    echo "" 1>&2; 
+    exit 1; 
+}
+
+function wheres_waldo() {
+    FILE=$1
+    CONTENT_GREP=$2
+    # check if grep returns any matches...
+    cat $FILE | grep -E "$CONTENT_GREP" > /dev/null 2>&1;
+    found=$?;
+    if [[ $found -eq 0 ]];
+    then
+        printf "found in: ${GREEN}%s${RESET}\n" "${FILE}";
+        # print header line
+        header_line=`head -n 1 $FILE`;
+        printf "${CYAN}%s${RESET}\n" $header_line;
+        # print matching lines
+        cat $FILE | grep -E "$CONTENT_GREP" | grep --color "$CONTENT_GREP";
+
+    fi;
+    printf "${RESET}";
+    return $found;
+}
+
+
+function wheres_waldo_output() {
+    FILE=$1
+    CONTENT_GREP=$2
+    OUTPUT_COLUMNS=$3
+    # echo "columns: "$OUTPUT_COLUMNS;
+    field_selector=`echo $OUTPUT_COLUMNS | sed -E -n "s/([[:punct:]]*|[[:alpha:]]*|[[:blank:]]*)+/,/pg" | sed -E -n "s/^,*([[:digit:]]+)/\1/gp" | sed -E -n "s/([[:digit:]]+),$/\1/gp" | sed -E -n "s/([[:digit:]]+)/$\1/gp"`;
+    # echo "$field_selector"
+    print_format=`echo $OUTPUT_COLUMNS | sed -E -n "s/([[:digit:]])+/%s/pg"`
+    # echo "$print_format"
+
+    # check if grep returns any matches...
+    matched_lines=`cat $FILE | grep -E "$CONTENT_GREP" | wc -l`;
+    if [[ $matched_lines -gt 0 ]];
+    then
+        found_delim=`delim "$FILE"`
+        printf "found in %s lines of: ${GREEN}%s${RESET} (delimiter: '%s')\n" "${matched_lines}" "${FILE}" "${found_delim}";
+        # generate awk program file
+        prog=" BEGIN { FS=found_delim } { printf(\"${print_format}\n\", $field_selector) } ";
+        prog_file="prog.awk"
+        echo "$prog" > $prog_file;
+        # print header line
+        header_line=`head -n 1 $FILE`;
+        echo $header_line | awk -v found_delim=$found_delim -f $prog_file;
+        # print selected columns of found lines
+        cat $FILE | grep -E "$CONTENT_GREP" | awk -v found_delim=$found_delim -f $prog_file;
+    fi;
+    printf "${RESET}";
+    return $found;
+}
+
+
+
+function wheres_waldo_output_limit() {
+    FILENAME=$1
+    CONTENT_GREP=$2
+    OUTPUT_COLUMNS=$3
+    LIMIT=$4
+    # echo "columns: "$OUTPUT_COLUMNS;
+    field_selector=`echo $OUTPUT_COLUMNS | sed -E -n "s/([[:punct:]]*|[[:alpha:]]*|[[:blank:]]*)+/,/pg" | sed -E -n "s/^,*([[:digit:]]+)/\1/gp" | sed -E -n "s/([[:digit:]]+),$/\1/gp" | sed -E -n "s/([[:digit:]]+)/$\1/gp"`;
+    # echo "$field_selector"
+    print_format=`echo $OUTPUT_COLUMNS | sed -E -n "s/([[:digit:]])+/%s/pg"`
+    # echo "$print_format"
+
+    # check if grep returns any matches...
+    matched_lines=`cat $FILENAME | grep -E "$CONTENT_GREP" | wc -l`;
+    if [[ $matched_lines -gt 0 ]];
+    then
+        # infer delimiter
+        found_delim=`delim "$FILENAME"`
+        printf "\nfound in %s lines of: ${GREEN}%s${RESET} (delimiter: '%s')\n" "${matched_lines}" "${FILENAME}" "${found_delim}";
+        # generate awk program file
+        prog=" BEGIN { FS=found_delim } { printf(\"${print_format}\n\", $field_selector) } ";
+        prog_file="prog.awk"
+        echo "$prog" > $prog_file;
+        # print header line
+        header_line=`head -n 1 $FILE`;
+        echo $header_line | awk -v found_delim=$found_delim -f $prog_file | xargs -I'{}' printf "${CYAN}%s${RESET}\n" "{}"
+        # print selected columns of found lines
+        cat $FILE | grep -E "$CONTENT_GREP" | awk -v found_delim=$found_delim -f $prog_file | head -n $LIMIT;
+    fi;
+    printf "${RESET}";
+    return $found;
+}
+
+
+while getopts ":s:f:o:l:v:" ARGS; do
+    case "${ARGS}" in
+        s)
+            s=${OPTARG}
+            # ((d == "," || d == "\t")) || usage
+            ;;
+        f)
+            f=${OPTARG}
+            ;;
+        o)
+            o=${OPTARG}
+            ;;
+        l)
+            l=${OPTARG}
+            ;;
+        v)
+            v=${OPTARG}
+            ;;
+        *)
+            usage
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+if [ -z "${s}" ]; then
+    usage
+else
+    printf "\n\nsearching for: ${CYAN}${s}\n${RESET}"
+fi
+
+found_in_files=()
+
+if [ -z "${f}" ]; then
+        f=".*";
+fi
+if [ -z "${o}" ]; then
+        o="0";
+fi
+if [ -z "${l}" ]; then
+        l="20";
+fi
+
+
+FILES=`find * -maxdepth 1 -type f | grep -E "${f}"`
+while read FILE; do
+        # wheres_waldo_output "${FILE}" "${s}" "${o}";
+        wheres_waldo_output_limit "${FILE}" "${s}" "${o}" ${l};
+        found=$?;
+        if [[ $found=0 ]]; then
+            found_in_files+=("$FILE");
+        fi;
+done <<< "$FILES";
+
+printf "\n\n${GREEN}found in: \n${RESET}";
+for found_file in ${found_in_files[@]}; do
+    printf "\t%s\n" "$found_file";
+done;
+
