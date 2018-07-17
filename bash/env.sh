@@ -31,7 +31,9 @@ export PATH=$SCRIPTS/text_tools:$PATH
 export PATH=$SCRIPTS/visier:$PATH
 export PATH=$SCRIPTS/visier/deployment_tools:$PATH
 export PATH=$SCRIPTS/hg:$PATH
-
+# add gnu grep (brew install grep)
+export PATH="/usr/local/opt/grep/libexec/gnubin:$PATH";
+export MANPATH="/usr/local/opt/grep/libexec/gnuman:$MANPATH"
 # hg commands
 
 export Demographics=~/Documents/hg/com.visiercorp.vserver/db_publish/DB/20140124/Demographics/0
