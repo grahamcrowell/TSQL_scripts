@@ -45,10 +45,19 @@ function write_awk_program() {
     field_selector=`echo "$OUTPUT_COLUMNS" | grep -E -o "[[:digit:]]+" | xargs -I'{}' printf ",$%s" '{}'`;
     field_selector=${field_selector:1}
     # extract formatting from $OUTPUT_COLUMNS, replace column indices with "%s" for printf
+    # print_format=`echo "$OUTPUT_COLUMNS" | grep -E -o "[[:digit:]]+" | xargs -I'{}' printf ",%s" '{}'`;
     print_format=`echo "$OUTPUT_COLUMNS" | sed -E -n "s/([[:digit:]]+)+/%s/pg"`
+    print_format=`echo "$OUTPUT_COLUMNS" | grep -E -o "[[:digit:]]+" | xargs -I'{}' printf ",%s" "%s"`;
+    print_format=${print_format:1}
+
+
     # create awk program as string
     prog=" BEGIN { FS=found_delim } { printf(\"${print_format}\n\", "${field_selector}") } ";
-    echo $prog;
+    # echo "columns: "$OUTPUT_COLUMNS;
+    # echo "field_selector: $field_selector"
+    # echo "print_format: $print_format"
+    # echo "awk program: $prog"
+    echo "$prog";
 }
 
 
@@ -59,9 +68,10 @@ function wheres_waldo_output_limit() {
     LIMIT=$4
 
     awk_program=`write_awk_program "$OUTPUT_COLUMNS"`
+    echo $awk_program;
     # save awk program in temp file.
     prog_file=$HOME"/prog.awk"
-    echo "$prog" > $prog_file;
+    echo "$awk_program" > $prog_file;
     # check if grep returns any matches...
     found=1;
     matched_lines=`cat "$FILENAME" | grep -E "$CONTENT_GREP" | wc -l`;
@@ -73,17 +83,86 @@ function wheres_waldo_output_limit() {
         printf "\nfound in %s lines of: ${GREEN}%s${RESET} (delimiter: '%s')\n" "${matched_lines}" "${FILENAME}" "${found_delim}";
         # print header line
         header_line=`head -n 1 $FILE`;
-        echo $header_line | awk -v found_delim=$found_delim -f $prog_file | xargs -I'{}' printf "${CYAN}%s${RESET}\n" "{}"
+        # echo $header_line;
+        echo $header_line | awk -v found_delim=$found_delim -f $prog_file # | xargs -I'{}' printf "${CYAN}%s${RESET}\n" "{}"
         # create new grep expression by adding "|" to given $CONTENT_GREP so matched are highlighted without filtering unmatched lines
         content_grep_or="$CONTENT_GREP""|"
         # print selected columns of found lines and highlight matches
-        cat $FILE | grep -E "$CONTENT_GREP" | awk -v found_delim=$found_delim -f $prog_file | head -n $LIMIT | grep --color -E $content_grep_or;
+        cat $FILE |\
+            # filter file lines with grep
+            grep -E "$CONTENT_GREP" |\
+            # select columns to output with awk
+            awk -v found_delim=$found_delim -f $prog_file |\
+            # limit matches
+            head -n $LIMIT  |\
+            # format at table
+            column -t -s"${found_delim}" |\
+            # highlight grep matches in selected columns of filtered lines
+            grep --color -E $content_grep_or
         printf "${RESET}\n";
     fi;
-    #echo "columns: "$OUTPUT_COLUMNS;
-    #echo "field_selector: $field_selector"
-    #echo "print_format: $print_format"
-    #echo "awk program: $prog"
+
+    return $found;
+}
+
+function formatted_query() {
+    
+}
+
+function wheres_waldo_output_limit() {
+    FILENAME="$1"
+    CONTENT_GREP="$2"
+    OUTPUT_COLUMNS="$3"
+    LIMIT=$4
+
+    # infer delimiter
+    found_delim=`delim "$FILENAME"`
+    if [ "$found_delim" = "" ];
+    then
+        printf "${RED}${FILENAME} is not a delimited file.${RESET}\n"
+        return 1;
+    fi;
+
+
+    awk_program=`write_awk_program "$OUTPUT_COLUMNS"`
+    # echo $awk_program;
+    # save awk program in temp file.
+    prog_file=$HOME"/prog.awk"
+    echo "$awk_program" > $prog_file;
+    # check if grep returns any matches...
+    found=1;
+    matched_lines=`cat "$FILENAME" | grep -E "$CONTENT_GREP" | wc -l`;
+    if [[ $matched_lines -gt 0 ]];
+    then
+        found=0;
+
+        printf "\nfound in %s lines of: ${GREEN}%s${RESET} (delimiter: '%s')\n" "${matched_lines}" "${FILENAME}" "${found_delim}";
+        # print header line
+        header_line=`head -n 1 "$FILENAME" | awk -v found_delim=$found_delim -f $prog_file`;
+        # printf "header_line: %s\n" $header_line 
+        # echo $header_line | awk -v found_delim=$found_delim -f $prog_file # | xargs -I'{}' printf "${CYAN}%s${RESET}\n" "{}"
+        # create new grep expression by adding "|" to given $CONTENT_GREP so matched are highlighted without filtering unmatched lines
+        content_grep_or="$CONTENT_GREP""|"
+        # print selected columns of found lines and highlight matches
+        
+        {
+            echo $header_line;
+        
+            cat $FILE |\
+                # filter file lines with grep
+                grep -E "$CONTENT_GREP" |\
+                # limit matches
+                head -n $LIMIT |\
+                # select columns to output with awk
+                awk -v found_delim=$found_delim -f $prog_file
+        } |\
+        # format at table
+        column -t -s,
+        # highlight grep matches in selected columns of filtered lines
+            # grep --color -E $content_grep_or
+        printf "${RESET}\n";
+    fi;
+
     return $found;
 }
 
@@ -136,20 +215,32 @@ function debug() {
     printf "%s : %s\n" "l" "$l";
 }
 
+function query() {
+    file_arg="$1"
+    search_arg="$2";
+    output_arg="$3";
+    limit_arg="$4";
+    found_in_files=()
+    FILES=`find * -maxdepth 1 -type f | grep -E "${file_arg}"`
+    while read FILE; do
+            wheres_waldo_output_limit "${FILE}" "${search_arg}" "${output_arg}" ${limit_arg};
+            found=$?;
+            if [[ $found -eq 0 ]]; then
+                found_in_files+=("$FILE");
+            fi;
+    done <<< "$FILES";
+    file_found_count=${#found_in_files[@]}
+    if [[ $file_found_count -gt 0 ]];
+    then
+        printf "\n\n${GREEN}found in %d files: \n${RESET}" $file_found_count;
+        for found_file in ${found_in_files[@]}; do
+            printf "\t%s\n" "$found_file";
+        done;
+    else
+        printf "\n\n${YELLOW}NOT found${RESET}\n";
+    fi;
 
-found_in_files=()
-FILES=`find * -maxdepth 1 -type f | grep -E "${f}"`
-while read FILE; do
-        wheres_waldo_output_limit "${FILE}" "${s}" "${o}" ${l};
-        found=$?;
-        if [[ $found -eq 0 ]]; then
-            found_in_files+=("$FILE");
-        fi;
-done <<< "$FILES";
+}
 
-printf "\n\n${GREEN}found in: \n${RESET}";
-for found_file in ${found_in_files[@]}; do
-    printf "\t%s\n" "$found_file";
-done;
-
+query "$f" "$s" "$o" "$l";
 # debug;
