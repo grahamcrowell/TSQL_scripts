@@ -1,1 +1,0 @@
-Out-File -FilePath "C:\Users\gcrowell\hithere.txt" -InputObject "I was ran automatically" -Append

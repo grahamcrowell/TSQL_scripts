@@ -1,1 +1,0 @@
-EXEC sp_MSforeachdb 'INSERT INTO tempdb.dbo.[##databases] (database_name) SELECT ''?''', @preCommand = 'IF EXISTS(SELECT 1 FROM tempdb.sys.tables WHERE name = ''##databases'') DROP TABLE tempdb.dbo.[##databases]; CREATE TABLE ##databases (database_name varchar(100));', @postCommand = 'SELECT * FROM ##databases; DROP TABLE tempdb.dbo.[##databases];'
