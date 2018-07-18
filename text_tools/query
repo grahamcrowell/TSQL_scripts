@@ -2,6 +2,13 @@
 
 SCRIPT_NAME=`basename "$0"`
 
+# TODO:
+# - wrap main file loop in a function
+# - table formatting
+# - infer path from current branch
+# - don't make temp file for awk program
+# - handle verbose flag
+
 usage() {
     echo "Usage: $SCRIPT_NAME -s <data_regex_filter> [-f <filename_regex_filter>] [-o <output_column_expr>] [-l <line_limit_per_file>]" 1>&2; 
     echo "" 1>&2; 
@@ -25,44 +32,58 @@ usage() {
     exit 1; 
 }
 
+function write_awk_program() {
+    # generates an awk program to print formatted columns
+    # example: $1="31|1|2|10_42,"
+    # -> field_selector="$31,$1,$2,$10,$42"
+    # -> print_format="%s|%s|%s|%s_%s,"
+
+    # input: string containing 1 or more column indices
+    OUTPUT_COLUMNS="$1";
+
+    # extract column indices from $OUTPUT_COLUMNS; return as comma delimited string
+    field_selector=`echo "$OUTPUT_COLUMNS" | grep -E -o "[[:digit:]]+" | xargs -I'{}' printf ",$%s" '{}'`;
+    field_selector=${field_selector:1}
+    # extract formatting from $OUTPUT_COLUMNS, replace column indices with "%s" for printf
+    print_format=`echo "$OUTPUT_COLUMNS" | sed -E -n "s/([[:digit:]]+)+/%s/pg"`
+    # create awk program as string
+    prog=" BEGIN { FS=found_delim } { printf(\"${print_format}\n\", "${field_selector}") } ";
+    echo $prog;
+}
+
 
 function wheres_waldo_output_limit() {
-    FILENAME=$1
-    CONTENT_GREP=$2
-    OUTPUT_COLUMNS=$3
+    FILENAME="$1"
+    CONTENT_GREP="$2"
+    OUTPUT_COLUMNS="$3"
     LIMIT=$4
-	field_selector=`echo $OUTPUT_COLUMNS | grep -E -o "[[:digit:]]+" | xargs -I'{}' printf ",$%s" '{}'`
-	field_selector=${field_selector:1}
-    # field_selector=`echo $OUTPUT_COLUMNS | sed -E -n "s/([[:punct:]]*|[[:alpha:]]*|[[:blank:]]*)+/,/pg" | sed -E -n "s/^,*([[:digit:]]+)/\1/gp" | sed -E -n "s/([[:digit:]]+),$/\1/gp" | sed -E -n "s/([[:digit:]]+)/$\1/gp"`;
-    print_format=`echo $OUTPUT_COLUMNS | sed -E -n "s/([[:digit:]]+)+/%s/pg"`
+
+    awk_program=`write_awk_program "$OUTPUT_COLUMNS"`
+    # save awk program in temp file.
+    prog_file=$HOME"/prog.awk"
+    echo "$prog" > $prog_file;
     # check if grep returns any matches...
     found=1;
-    matched_lines=`cat $FILENAME | grep -E "$CONTENT_GREP" | wc -l`;
+    matched_lines=`cat "$FILENAME" | grep -E "$CONTENT_GREP" | wc -l`;
     if [[ $matched_lines -gt 0 ]];
     then
-      	found=0;
+        found=0;
         # infer delimiter
         found_delim=`delim "$FILENAME"`
         printf "\nfound in %s lines of: ${GREEN}%s${RESET} (delimiter: '%s')\n" "${matched_lines}" "${FILENAME}" "${found_delim}";
-        # generate awk program file
-        prog=" BEGIN { FS=found_delim } { printf(\"${print_format}\n\", "${field_selector}") } ";
-        prog_file=$HOME"/prog.awk"
-        echo "$prog" > $prog_file;
         # print header line
         header_line=`head -n 1 $FILE`;
         echo $header_line | awk -v found_delim=$found_delim -f $prog_file | xargs -I'{}' printf "${CYAN}%s${RESET}\n" "{}"
-        # print selected columns of found lines
-		# TODO grep highlighting and -o option aren't compatible
-        cat $FILE | grep -E "$CONTENT_GREP" | awk -v found_delim=$found_delim -f $prog_file | head -n $LIMIT | grep --color -E "$CONTENT_GREP""|";
+        # create new grep expression by adding "|" to given $CONTENT_GREP so matched are highlighted without filtering unmatched lines
+        content_grep_or="$CONTENT_GREP""|"
+        # print selected columns of found lines and highlight matches
+        cat $FILE | grep -E "$CONTENT_GREP" | awk -v found_delim=$found_delim -f $prog_file | head -n $LIMIT | grep --color -E $content_grep_or;
+        printf "${RESET}\n";
     fi;
-    printf "${RESET}";
-	
     #echo "columns: "$OUTPUT_COLUMNS;
-	#echo "field_selector: $field_selector"
-	#echo "print_format: $print_format"
-	#echo "awk program: $prog"
-    
-    
+    #echo "field_selector: $field_selector"
+    #echo "print_format: $print_format"
+    #echo "awk program: $prog"
     return $found;
 }
 
@@ -97,30 +118,28 @@ if [ -z "${s}" ]; then
 else
     printf "\n\nsearching for: ${RED}${s}\n${RESET}"
 fi
-
-found_in_files=()
-
+# set defaults for optional params
 if [ -z "${f}" ]; then
-        f=".*";
+    f=".*";
 fi
 if [ -z "${o}" ]; then
-        o="0";
+    o="0";
 fi
 if [ -z "${l}" ]; then
-        l="20";
+    l="20";
 fi
 
 function debug() {
-	printf "%s : %s\n" "s" "$s";
-	printf "%s : %s\n" "f" "$f";
-	printf "%s : %s\n" "o" "$o";
-	printf "%s : %s\n" "l" "$l";
+    printf "%s : %s\n" "s" "$s";
+    printf "%s : %s\n" "f" "$f";
+    printf "%s : %s\n" "o" "$o";
+    printf "%s : %s\n" "l" "$l";
 }
 
 
+found_in_files=()
 FILES=`find * -maxdepth 1 -type f | grep -E "${f}"`
 while read FILE; do
-        # wheres_waldo_output "${FILE}" "${s}" "${o}";
         wheres_waldo_output_limit "${FILE}" "${s}" "${o}" ${l};
         found=$?;
         if [[ $found -eq 0 ]]; then
