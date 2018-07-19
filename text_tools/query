@@ -106,7 +106,33 @@ function wheres_waldo_output_limit() {
 }
 
 function formatted_query() {
-    
+    FILENAME="$1"
+    CONTENT_GREP="$2"
+    OUTPUT_COLUMNS="$3"
+    LIMIT=$4
+
+    # generate awk program
+    awk_program=`write_awk_program "$OUTPUT_COLUMNS"`
+    # echo $awk_program;
+    # save awk program in temp file.
+    prog_file=$HOME"/prog.awk"
+    echo "$awk_program" > $prog_file;
+
+    { 
+        head -n 1 "$FILENAME" |\
+            # output selected column headers as csv
+            awk -v found_delim=$found_delim -f $prog_file;
+        cat $FILE |\
+            # filter file lines with grep
+            grep -E "$CONTENT_GREP" |\
+            # limit matches
+            head -n $LIMIT |\
+            # output selected columns as csv
+            awk -v found_delim=$found_delim -f $prog_file
+    }
+    #  |\
+    # format output as a table
+    # column -t -s,
 }
 
 function wheres_waldo_output_limit() {
@@ -124,11 +150,7 @@ function wheres_waldo_output_limit() {
     fi;
 
 
-    awk_program=`write_awk_program "$OUTPUT_COLUMNS"`
-    # echo $awk_program;
-    # save awk program in temp file.
-    prog_file=$HOME"/prog.awk"
-    echo "$awk_program" > $prog_file;
+
     # check if grep returns any matches...
     found=1;
     matched_lines=`cat "$FILENAME" | grep -E "$CONTENT_GREP" | wc -l`;
@@ -137,27 +159,9 @@ function wheres_waldo_output_limit() {
         found=0;
 
         printf "\nfound in %s lines of: ${GREEN}%s${RESET} (delimiter: '%s')\n" "${matched_lines}" "${FILENAME}" "${found_delim}";
-        # print header line
-        header_line=`head -n 1 "$FILENAME" | awk -v found_delim=$found_delim -f $prog_file`;
-        # printf "header_line: %s\n" $header_line 
-        # echo $header_line | awk -v found_delim=$found_delim -f $prog_file # | xargs -I'{}' printf "${CYAN}%s${RESET}\n" "{}"
-        # create new grep expression by adding "|" to given $CONTENT_GREP so matched are highlighted without filtering unmatched lines
-        content_grep_or="$CONTENT_GREP""|"
-        # print selected columns of found lines and highlight matches
-        
-        {
-            echo $header_line;
-        
-            cat $FILE |\
-                # filter file lines with grep
-                grep -E "$CONTENT_GREP" |\
-                # limit matches
-                head -n $LIMIT |\
-                # select columns to output with awk
-                awk -v found_delim=$found_delim -f $prog_file
-        } |\
-        # format at table
-        column -t -s,
+        table=`formatted_query "$FILENAME" "$CONTENT_GREP" "$OUTPUT_COLUMNS" "$LIMIT"`
+        { printf $CYAN; printf "$table" | column -t -s, | head -n 1; printf $RESET"\n"; }
+        { printf $CYAN; printf "$table" | column -t -s, | tail -n 1; printf $RESET; }
         # highlight grep matches in selected columns of filtered lines
             # grep --color -E $content_grep_or
         printf "${RESET}\n";
