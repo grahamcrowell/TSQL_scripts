@@ -33,3 +33,4 @@ export YELLOW='\e[1;33m'
 export RED='\e[0;31m'
 export CYAN='\e[0;36m'
 
+export PATH="$SCRIPTS:$PATH"
