@@ -1,4 +1,5 @@
 {
-  "python.pythonPath": "/usr/local/bin/python3",
-  "editor.useTabStops": false
+  "python.pythonPath": "/home/linuxbrew/.linuxbrew/opt/python/bin/python3.7",
+  "editor.useTabStops": false,
+  "python.linting.enabled": false
 }

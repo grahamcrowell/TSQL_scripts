@@ -32,6 +32,11 @@ if [[ $platform == 'linux' ]]; then
     PATH="/home/linuxbrew/.linuxbrew/bin:$PATH"
 
     alias chrome="google-chrome-stable --disable-web-security --user-data-dir ~/.config/google-chrome"
+    function open_code() {
+        code "$@" --disable-gpu
+    }
+    alias code=open_code
+
 elif [[ $platform == 'mac' ]]; then
     export esl="ESL/tenant-domains/src/main/scala/visier/data/domains/tenant"
     export RELEASE_BRANCH=RELEASE-20180519-VEYRON

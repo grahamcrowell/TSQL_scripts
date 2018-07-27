@@ -8,3 +8,4 @@ reviewboard
 **/*.pyc
 **/*file*validation*
 visier
+rust
